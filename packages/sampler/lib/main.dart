@@ -11,7 +11,7 @@ class Model {
 
 Model model = Model();
 
-FileSystem fs = LocalFileSystem();
+const FileSystem fs = LocalFileSystem();
 
 const String _kFileOption = 'file';
 
@@ -24,7 +24,7 @@ void main(List<String> argv) {
     model.file = fs.file(args[_kFileOption]);
   }
 
-  runApp(MainApp());
+  runApp(const MainApp());
 }
 
 class MainApp extends StatelessWidget {
@@ -41,25 +41,6 @@ class MainApp extends StatelessWidget {
       ),
       home: const Sampler(title: _title),
     );
-  }
-}
-
-class Sample {
-  Sample({required this.id, required this.codeBlocks});
-
-  String id;
-  String description;
-  File template;
-  Map<String, String> codeBlocks;
-}
-
-class SampleModel {
-  SampleModel({required this.file}) { parseFile(file); }
-  File file;
-  List<Sample> snippets = <Sample>[];
-  
-  void parseFile(File file) {
-    
   }
 }
 
@@ -83,7 +64,7 @@ class _SamplerState extends State<Sampler> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
+            const Text(
               'You have pushed the button this many times:',
             ),
             Text(
@@ -94,9 +75,9 @@ class _SamplerState extends State<Sampler> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {},
         tooltip: 'Increment',
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
