@@ -4,6 +4,7 @@
 
 import 'package:file/file.dart';
 import 'package:file/local.dart';
+import 'package:snippets/snippets.dart';
 
 class Sample {
   Sample({
@@ -20,8 +21,13 @@ class Sample {
   Map<String, String> codeBlocks;
 
   /// Creates a string with the contents of [codeBlocks] interpolated into [template].
-  String interpolate() {
-    return '';
+  String interpolate(toolBlock) {
+    final SnippetGenerator generator = SnippetGenerator(configuration: PackageSnippetConfiguration(
+      packageRoot: fs.directory('..').childDirectory('snippets'),
+      outputDirectory: fs.currentDirectory,
+    ));
+
+    return generator.parseInput(toolBlock);
   }
 
   FileSystem fs;

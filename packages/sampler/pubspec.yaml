@@ -10,6 +10,8 @@ dependencies:
   file_picker: ^3.0.0
   file: ^6.1.0
   args: ^2.0.0
+  snippets:
+    path: ../snippets
   flutter:
     sdk: flutter
 

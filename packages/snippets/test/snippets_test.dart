@@ -22,7 +22,7 @@ void main() {
       tmpDir = Directory.systemTemp.createTempSync('flutter_snippets_test.');
       configuration = FlutterRepoSnippetConfiguration(flutterRoot: Directory(path.join(
           tmpDir.absolute.path, 'flutter')));
-      configuration.createOutputDirectory();
+      configuration.createOutputDirectoryIfNeeded();
       configuration.templatesDirectory.createSync(recursive: true);
       configuration.skeletonsDirectory.createSync(recursive: true);
       template = File(path.join(configuration.templatesDirectory.path, 'template.tmpl'));

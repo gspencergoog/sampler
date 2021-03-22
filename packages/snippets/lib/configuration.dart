@@ -23,7 +23,8 @@ String getEnumName(dynamic enumItem) {
   return index == -1 ? name : name.substring(index + 1);
 }
 
-abstract class SnippetConfiguration {
+// Represents the locations of all of the data for snippets.
+class SnippetConfiguration {
   const SnippetConfiguration({
     required this.configDirectory,
     required this.outputDirectory,
@@ -49,7 +50,7 @@ abstract class SnippetConfiguration {
 
   /// This makes sure that the output directory exists, and creates it if it
   /// doesn't.
-  void createOutputDirectory() {
+  void createOutputDirectoryIfNeeded() {
     if (!outputDirectory.existsSync()) {
       outputDirectory.createSync(recursive: true);
     }
@@ -64,6 +65,27 @@ abstract class SnippetConfiguration {
         '${showDartPad ? 'dartpad-' : ''}${getEnumName(type)}.html';
     return File(path.join(skeletonsDirectory.path, filename));
   }
+}
+
+/// A class to compute the configuration of the snippets input and output
+/// locations based in the current location of the snippets package.
+class PackageSnippetConfiguration extends SnippetConfiguration {
+  PackageSnippetConfiguration({
+    required Directory packageRoot,
+    required Directory outputDirectory,
+  }) : super(
+            configDirectory: _underRoot(packageRoot, const <String>['config']),
+            outputDirectory: outputDirectory,
+            skeletonsDirectory:
+                _underRoot(packageRoot, const <String>['config', 'skeletons']),
+            templatesDirectory: _underRoot(
+              packageRoot,
+              const <String>['config', 'templates'],
+            ));
+
+  static Directory _underRoot(Directory packageRoot, List<String> dirs) =>
+      Directory(path.canonicalize(
+          path.joinAll(<String>[packageRoot.absolute.path, ...dirs])));
 }
 
 /// A class to compute the configuration of the snippets input and output
