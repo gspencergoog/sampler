@@ -9,7 +9,7 @@ packages:
     source: hosted
     version: "18.0.0"
   analyzer:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: analyzer
       url: "https://pub.dartlang.org"
@@ -197,6 +197,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.5.0"
+  process:
+    dependency: "direct main"
+    description:
+      name: process
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "4.1.1"
   pub_semver:
     dependency: transitive
     description:

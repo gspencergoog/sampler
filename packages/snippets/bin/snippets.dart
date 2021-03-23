@@ -168,25 +168,25 @@ void main(List<String> argList) {
   }
 
   final SnippetGenerator generator = SnippetGenerator();
-  stdout.write(generator.generate(
-    input,
-    snippetType,
-    showDartPad: args[_kShowDartPad] as bool,
-    template: template,
-    output: args[_kOutputOption] != null ? File(args[_kOutputOption] as String) : null,
-    metadata: <String, Object?>{
-      'sourcePath': environment['SOURCE_PATH'],
-      'sourceLine': environment['SOURCE_LINE'] != null
-          ? int.tryParse(environment['SOURCE_LINE']!)
-          : null,
-      'id': id.join('.'),
-      'channel': getChannelName(),
-      'serial': serial,
-      'package': packageName,
-      'library': libraryName,
-      'element': elementName,
-    },
-  ));
+  // stdout.write(generator.generate(
+  //   input,
+  //   snippetType,
+  //   showDartPad: args[_kShowDartPad] as bool,
+  //   template: template,
+  //   output: args[_kOutputOption] != null ? File(args[_kOutputOption] as String) : null,
+  //   metadata: <String, Object?>{
+  //     'sourcePath': environment['SOURCE_PATH'],
+  //     'sourceLine': environment['SOURCE_LINE'] != null
+  //         ? int.tryParse(environment['SOURCE_LINE']!)
+  //         : null,
+  //     'id': id.join('.'),
+  //     'channel': getChannelName(),
+  //     'serial': serial,
+  //     'package': packageName,
+  //     'library': libraryName,
+  //     'element': elementName,
+  //   },
+  // ));
 
   exit(0);
 }

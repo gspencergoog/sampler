@@ -5,23 +5,7 @@
 import 'dart:io' hide Platform;
 
 import 'package:path/path.dart' as path;
-
-/// What type of snippet to produce.
-enum SnippetType {
-  /// Produces a snippet that includes the code interpolated into an application
-  /// template.
-  sample,
-
-  /// Produces a nicely formatted sample code, but no application.
-  snippet,
-}
-
-/// Return the name of an enum item.
-String getEnumName(dynamic enumItem) {
-  final String name = '$enumItem';
-  final int index = name.indexOf('.');
-  return index == -1 ? name : name.substring(index + 1);
-}
+import 'util.dart';
 
 // Represents the locations of all of the data for snippets.
 class SnippetConfiguration {
