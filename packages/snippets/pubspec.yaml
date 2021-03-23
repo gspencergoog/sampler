@@ -17,6 +17,7 @@ dependencies:
   platform: ^3.0.0
   process: ^4.1.1
   analyzer: ^1.2.0
+  quiver: ^3.0.0
 
 dev_dependencies:
   test: ^1.16.8

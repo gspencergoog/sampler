@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:io';
+
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -10,6 +11,8 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:pub_semver/pub_semver.dart';
+
+import 'interval_tree.dart';
 import 'model.dart';
 
 String getNextSymbolForLine(Line line) {
@@ -63,6 +66,29 @@ Map<String, List<Line>> getFileComments(File file) {
   return visitor.results;
 }
 
+class _LineNumber<T> extends Comparable<_LineNumber<T>> {
+  _LineNumber(this.value, this.line);
+
+  final int value;
+  final T line;
+
+  @override
+  int compareTo(_LineNumber<T> other) => value.compareTo(other.value);
+
+  @override
+  String toString() {
+    return '$value <$line>';
+  }
+}
+
+class _LineNumberInterval extends Interval<_LineNumber<int>> {
+  _LineNumberInterval(int start, int end, int line)
+      : super(
+          _LineNumber<int>(start, line),
+          _LineNumber<int>(end, line),
+        );
+}
+
 class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
   _CommentVisitor(this.file) : results = <String, List<Line>>{};
 
@@ -81,11 +107,11 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     final String contents = file.readAsStringSync();
     int lineNumber = 0;
     int startRange = 0;
-    final List<Line> lineRanges = <Line>[];
+    final IntervalTree<_LineNumber<int>> itree =
+        IntervalTree<_LineNumber<int>>();
     for (int i = 0; i < contents.length; ++i) {
       if (contents[i] == '\n') {
-        lineRanges.add(
-            Line('', line: lineNumber, startChar: startRange, endChar: i + 1));
+        itree.add(_LineNumberInterval(startRange, i, lineNumber));
         lineNumber++;
         startRange = i + 1;
       }
@@ -93,16 +119,17 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     for (final String key in results.keys) {
       final List<Line> newLines = <Line>[];
       for (final Line line in results[key]!) {
-        bool found = false;
-        for (final Line lineRange in lineRanges) {
-          if (line.startChar >= lineRange.startChar &&
-              line.endChar < lineRange.endChar) {
-            newLines.add(line.copyWith(line: lineRange.line));
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
+        final IntervalTree<_LineNumber<int>> resultTree =
+            IntervalTree<_LineNumber<int>>()
+              ..add(_LineNumberInterval(line.startChar, line.endChar, -1));
+        final IntervalTree<_LineNumber<int>> intersection =
+            itree.intersection(resultTree);
+        if (intersection.isNotEmpty) {
+          final int lineNumber = intersection.single.start.line == -1
+              ? intersection.single.end.line
+              : intersection.single.start.line;
+          newLines.add(line.copyWith(line: lineNumber));
+        } else {
           newLines.add(line);
         }
       }
