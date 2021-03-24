@@ -170,6 +170,8 @@ class SnippetGenerator {
   /// [SampleType.sample].
   String generate(
       CodeSample sample, {
+        String? template,
+        File? output,
         Map<String, Object?>? metadata,
       }) {
     metadata ??= <String, Object>{};
@@ -182,17 +184,18 @@ class SnippetGenerator {
     switch (sample.type) {
       case SampleType.dartpad:
       case SampleType.sample:
-        final String template = sample.template;
         final Directory templatesDir = configuration.templatesDirectory;
         if (templatesDir == null) {
           stderr.writeln('Unable to find the templates directory.');
           exit(1);
         }
+        final String templateName = template ?? sample.template;
         final File? templateFile =
-        getTemplatePath(template, templatesDir: templatesDir);
+        getTemplatePath(templateName, templatesDir: templatesDir);
         if (templateFile == null) {
           stderr.writeln(
-              'The template $template was not found in the templates directory ${templatesDir.path}');
+              'The template $templateName was not found in the templates '
+                  'directory ${templatesDir.path}');
           exit(1);
         }
         final String templateContents = _loadFileAsUtf8(templateFile);
@@ -216,6 +219,9 @@ class SnippetGenerator {
         break;
       case SampleType.snippet:
         break;
+    }
+    if (output != null) {
+      output.writeAsStringSync(sample.output);
     }
     return sample.output;
   }

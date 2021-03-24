@@ -22,9 +22,10 @@ void main(List<String> argList) {
   }
 
   final SnippetDartdocParser snippetParser = SnippetDartdocParser();
-  final SnippetGenerator generator = SnippetGenerator();
   final List<CodeSample> samples =
       snippetParser.parse(File(args['file']! as String));
+
+  final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {
     print('${sample.id}: $sample');
     print('Generated:\n${generator.generate(sample)}');

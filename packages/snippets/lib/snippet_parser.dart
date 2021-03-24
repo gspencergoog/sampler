@@ -8,7 +8,7 @@ import 'analysis.dart';
 import 'model.dart';
 import 'util.dart';
 
-/// Parses [CodeSample]s from the source file given to [parse].
+/// Parses [CodeSample]s from the source file given to [parse], or from
 class SnippetDartdocParser {
   SnippetDartdocParser();
 
@@ -34,7 +34,7 @@ class SnippetDartdocParser {
   /// A RegExp that matches a Dart constructor.
   static final RegExp _constructorRegExp =
       RegExp(r'(const\s+)?_*[A-Z][a-zA-Z0-9<>._]*\(');
-  //
+
   // /// A RegExp that matches a dart version specification in an example preamble.
   // static final RegExp _dartVersionOverrideRegExp =
   //     RegExp(r'\/\/ (?<override>\/\/ @dart = (?<version>[0-9]+\.[0-9]+))');
@@ -89,7 +89,7 @@ class SnippetDartdocParser {
   }
 
   List<CodeSample> parseFromComments(
-    Map<String, List<Line>> comments, {
+    List<List<Line>> comments, {
     bool silent = false,
     List<Line> preamble = const <Line>[],
   }) {
@@ -98,8 +98,8 @@ class SnippetDartdocParser {
     int snippetCount = 0;
 
     final List<CodeSample> samples = <CodeSample>[];
-    for (final String commentKey in comments.keys) {
-      final List<CodeSample> newSamples = parseComment(comments[commentKey]!);
+    for (final List<Line> commentLines in comments) {
+      final List<CodeSample> newSamples = parseComment(commentLines);
       for (final CodeSample sample in newSamples) {
         switch (sample.type) {
           case SampleType.sample:

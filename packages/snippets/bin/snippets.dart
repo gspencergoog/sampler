@@ -24,9 +24,23 @@ String getChannelName() {
   final ProcessResult gitResult = Process.runSync('git', <String>['status', '-b', '--porcelain']);
   if (gitResult.exitCode != 0)
     throw 'git status exit with non-zero exit code: ${gitResult.exitCode}';
-  final RegExpMatch? gitBranchMatch = gitBranchRegexp.firstMatch(
-      (gitResult.stdout as String).trim().split('\n').first);
-  return gitBranchMatch == null ? '<unknown>' : gitBranchMatch.namedGroup('branch')!.split('...').first;
+  final RegExpMatch? gitBranchMatch =
+      gitBranchRegexp.firstMatch((gitResult.stdout as String).trim().split('\n').first);
+  return gitBranchMatch == null
+      ? '<unknown>'
+      : gitBranchMatch.namedGroup('branch')!.split('...').first;
+}
+
+List<Line> getLinesFromInput({int? startLine, String? element, required File input}) {
+  final List<Line> inputLines = <Line>[];
+  int lineNumber = startLine ?? 0;
+  for (final String line in input.readAsLinesSync()) {
+    inputLines.add(
+      Line(line, element: element ?? '', line: lineNumber),
+    );
+    lineNumber++;
+  }
+  return inputLines;
 }
 
 /// Generates snippet dartdoc output for a given input, and creates any sample
@@ -38,15 +52,18 @@ void main(List<String> argList) {
       SampleType.values.map<String>((SampleType type) => getEnumName(type)).toList();
   parser.addOption(
     _kTypeOption,
-    defaultsTo: getEnumName(SampleType.sample),
+    defaultsTo: getEnumName(SampleType.dartpad),
     allowed: snippetTypes,
     allowedHelp: <String, String>{
+      getEnumName(SampleType.dartpad):
+          'Produce a code sample application complete with embedding the sample in an '
+              'application template.',
       getEnumName(SampleType.sample):
           'Produce a code sample application complete with embedding the sample in an '
-          'application template.',
+              'application template.',
       getEnumName(SampleType.snippet):
           'Produce a nicely formatted piece of sample code. Does not embed the '
-          'sample into an application template.',
+              'sample into an application template.',
     },
     help: 'The type of snippet to produce.',
   );
@@ -110,12 +127,12 @@ void main(List<String> argList) {
     exit(0);
   }
 
-  final SampleType snippetType = SampleType.values
-      .firstWhere((SampleType type) => getEnumName(type) == args[_kTypeOption]);
+  final SampleType snippetType =
+      SampleType.values.firstWhere((SampleType type) => getEnumName(type) == args[_kTypeOption]);
 
-  if (args[_kShowDartPad] == true && snippetType != SampleType.sample) {
+  if (args[_kShowDartPad] == true && snippetType != SampleType.dartpad) {
     errorExit('${args[_kTypeOption]} was selected, but the --dartpad flag is only valid '
-      'for application sample code.');
+        'for dartpad examples.');
   }
 
   if (args[_kInputOption] == null) {
@@ -167,26 +184,31 @@ void main(List<String> argList) {
     }
   }
 
+  final int? sourceLine =
+      environment['SOURCE_LINE'] != null ? int.tryParse(environment['SOURCE_LINE']!) : null;
+  final List<Line> lines =
+      getLinesFromInput(input: input, startLine: sourceLine, element: elementName);
+  final SnippetDartdocParser snippetParser = SnippetDartdocParser();
+  final List<CodeSample> samples = snippetParser.parseFromComments(<List<Line>>[lines]);
+
   final SnippetGenerator generator = SnippetGenerator();
-  // stdout.write(generator.generate(
-  //   input,
-  //   snippetType,
-  //   showDartPad: args[_kShowDartPad] as bool,
-  //   template: template,
-  //   output: args[_kOutputOption] != null ? File(args[_kOutputOption] as String) : null,
-  //   metadata: <String, Object?>{
-  //     'sourcePath': environment['SOURCE_PATH'],
-  //     'sourceLine': environment['SOURCE_LINE'] != null
-  //         ? int.tryParse(environment['SOURCE_LINE']!)
-  //         : null,
-  //     'id': id.join('.'),
-  //     'channel': getChannelName(),
-  //     'serial': serial,
-  //     'package': packageName,
-  //     'library': libraryName,
-  //     'element': elementName,
-  //   },
-  // ));
+  for (final CodeSample sample in samples) {
+    print('Generated for ${sample.start.element}, starting at line ${sample.start.line} in '
+        '${sample.start.file?.path}:\n${generator.generate(
+      sample,
+      template: template,
+      metadata: <String, Object?>{
+        'sourcePath': environment['SOURCE_PATH'],
+        'sourceLine': sourceLine,
+        'id': id.join('.'),
+        'channel': getChannelName(),
+        'serial': serial,
+        'package': packageName,
+        'library': libraryName,
+        'element': elementName,
+      },
+    )}');
+  }
 
   exit(0);
 }

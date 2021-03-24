@@ -57,8 +57,8 @@ class Line {
   String toString() => '$file:${line == -1 ? '??' : line}: $code';
 }
 
-// A class containing the name and contents associated with a code block in a
-// snippet.
+/// A class containing the name and contents associated with a code block inside if a
+/// code sample, for named injection into a template.
 class TemplateInjection {
   TemplateInjection(this.name, this.contents, {this.language = ''});
   final String name;
@@ -126,8 +126,8 @@ abstract class CodeSample {
 ///
 /// This is code that is not meant to be run as a complete application, but
 /// rather as a code usage example. One [Snippet] contains all of the "snippet"
-/// blocks for an entire file, since they are evaluated in the analysis tool a
-/// single block.
+/// blocks for an entire file, since they are evaluated in the analysis tool in
+/// a single block.
 class Snippet extends CodeSample {
   Snippet(List<Line> input)
       : super(SampleType.snippet, <String>['snippet'], input);

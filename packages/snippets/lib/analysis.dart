@@ -15,7 +15,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'interval_tree.dart';
 import 'model.dart';
 
-Map<String, List<Line>> getFileComments(File file) {
+List<List<Line>> getFileComments(File file) {
   final ParseStringResult parseResult = parseFile(
       featureSet: FeatureSet.fromEnableFlags2(
         // TODO(gspencergoog): Get the version string from the flutter --version
@@ -27,7 +27,7 @@ Map<String, List<Line>> getFileComments(File file) {
       _CommentVisitor<CompilationUnit>(file);
   visitor.visitCompilationUnit(parseResult.unit);
   visitor.assignLineNumbers();
-  return visitor.results;
+  return visitor.results.values.toList();
 }
 
 class _LineNumber<T> extends Comparable<_LineNumber<T>> {
