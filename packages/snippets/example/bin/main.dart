@@ -28,6 +28,6 @@ void main(List<String> argList) {
   final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {
     print('${sample.id}: $sample');
-    print('Generated:\n${generator.generate(sample)}');
+    print('Generated:\n${generator.generateCode(sample)}');
   }
 }

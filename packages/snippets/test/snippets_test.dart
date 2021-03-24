@@ -81,7 +81,7 @@ void main() {
 ''');
       final File outputFile = File(path.join(tmpDir.absolute.path, 'snippet_out.txt'));
 
-      final String html = generator.generate(
+      final String html = generator.generateCode(
         inputFile,
         SampleType.sample,
         template: 'template',
@@ -126,7 +126,7 @@ void main() {
 ```
 ''');
 
-      final String html = generator.generate(
+      final String html = generator.generateCode(
         inputFile,
         SampleType.snippet,
         metadata: <String, Object>{'id': 'id'},
@@ -154,7 +154,7 @@ void main() {
 ```
 ''');
 
-      final String html = generator.generate(
+      final String html = generator.generateCode(
         inputFile,
         SampleType.sample,
         showDartPad: true,
@@ -184,7 +184,7 @@ void main() {
       final File outputFile = File(path.join(tmpDir.absolute.path, 'snippet_out.dart'));
       final File expectedMetadataFile = File(path.join(tmpDir.absolute.path, 'snippet_out.json'));
 
-      generator.generate(
+      generator.generateCode(
         inputFile,
         SampleType.sample,
         template: 'template',

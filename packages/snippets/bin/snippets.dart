@@ -17,7 +17,6 @@ const String _kOutputOption = 'output';
 const String _kPackageOption = 'package';
 const String _kTemplateOption = 'template';
 const String _kTypeOption = 'type';
-const String _kShowDartPad = 'dartpad';
 
 String getChannelName() {
   final RegExp gitBranchRegexp = RegExp(r'^## (?<branch>.*)');
@@ -31,10 +30,25 @@ String getChannelName() {
       : gitBranchMatch.namedGroup('branch')!.split('...').first;
 }
 
-List<Line> getLinesFromInput({int? startLine, String? element, required File input}) {
+List<Line> getLinesFromInput(
+    {int? startLine,
+    String? element,
+    required File input,
+    required String type,
+    required String template}) {
   final List<Line> inputLines = <Line>[];
   int lineNumber = startLine ?? 0;
-  for (final String line in input.readAsLinesSync()) {
+  for (final String line in <String>[
+    // The parser wants to read the arguments from the input, so we create a new
+    // tool line to match the given arguments, so that we can use the same parser for
+    // editing and docs generation.
+    '/// {@tool $type${template.isNotEmpty ? ' --template=$template}' : ''}}',
+    // Snippet input comes in with the comment markers stripped, so we add them
+    // back to make it conform to the source format, so we can use the same
+    // parser for editing samples as we do for processing docs.
+    ...input.readAsLinesSync().map<String>((String line) => '/// $line'),
+    '/// {@end-tool}',
+  ]) {
     inputLines.add(
       Line(line, element: element ?? '', line: lineNumber),
     );
@@ -111,14 +125,6 @@ void main(List<String> argList) {
     negatable: false,
     help: 'Prints help documentation for this command',
   );
-  parser.addFlag(
-    _kShowDartPad,
-    defaultsTo: false,
-    negatable: false,
-    help: "Indicates whether DartPad should be included in the sample's "
-        'final HTML output. This flag only applies when the type parameter is '
-        '"sample".',
-  );
 
   final ArgResults args = parser.parse(argList);
 
@@ -129,11 +135,6 @@ void main(List<String> argList) {
 
   final SampleType snippetType =
       SampleType.values.firstWhere((SampleType type) => getEnumName(type) == args[_kTypeOption]);
-
-  if (args[_kShowDartPad] == true && snippetType != SampleType.dartpad) {
-    errorExit('${args[_kTypeOption]} was selected, but the --dartpad flag is only valid '
-        'for dartpad examples.');
-  }
 
   if (args[_kInputOption] == null) {
     stderr.writeln(parser.usage);
@@ -147,7 +148,7 @@ void main(List<String> argList) {
   }
 
   String? template;
-  if (snippetType == SampleType.sample) {
+  if (snippetType == SampleType.sample || snippetType == SampleType.dartpad) {
     final String templateArg = args[_kTemplateOption] as String;
     if (templateArg == null || templateArg.isEmpty) {
       stderr.writeln(parser.usage);
@@ -162,8 +163,10 @@ void main(List<String> argList) {
   final String elementName = args[_kElementOption] as String? ?? '';
   final String serial = args[_kSerialOption] as String? ?? '';
   final List<String> id = <String>[];
+  File? output;
   if (args[_kOutputOption] != null) {
     id.add(path.basename(path.basenameWithoutExtension(args[_kOutputOption] as String)));
+    output = File(path.absolute(args[_kOutputOption] as String));
   } else {
     if (packageName.isNotEmpty && packageName != 'flutter') {
       id.add(packageName);
@@ -186,28 +189,35 @@ void main(List<String> argList) {
 
   final int? sourceLine =
       environment['SOURCE_LINE'] != null ? int.tryParse(environment['SOURCE_LINE']!) : null;
-  final List<Line> lines =
-      getLinesFromInput(input: input, startLine: sourceLine, element: elementName);
+  final List<Line> lines = getLinesFromInput(
+    input: input,
+    startLine: sourceLine,
+    element: elementName,
+    template: template!,
+    type: getEnumName(snippetType),
+  );
   final SnippetDartdocParser snippetParser = SnippetDartdocParser();
   final List<CodeSample> samples = snippetParser.parseFromComments(<List<Line>>[lines]);
 
   final SnippetGenerator generator = SnippetGenerator();
+  final Map<String, Object?> metadata = <String, Object?>{
+    'sourcePath': environment['SOURCE_PATH'],
+    'sourceLine': sourceLine,
+    'id': id.join('.'),
+    'channel': getChannelName(),
+    'serial': serial,
+    'package': packageName,
+    'library': libraryName,
+    'element': elementName,
+  };
   for (final CodeSample sample in samples) {
-    print('Generated for ${sample.start.element}, starting at line ${sample.start.line} in '
-        '${sample.start.file?.path}:\n${generator.generate(
+    generator.generateCode(
       sample,
       template: template,
-      metadata: <String, Object?>{
-        'sourcePath': environment['SOURCE_PATH'],
-        'sourceLine': sourceLine,
-        'id': id.join('.'),
-        'channel': getChannelName(),
-        'serial': serial,
-        'package': packageName,
-        'library': libraryName,
-        'element': elementName,
-      },
-    )}');
+      metadata: metadata,
+      output: output,
+    );
+    print(generator.generateHtml(sample, metadata: metadata));
   }
 
   exit(0);

@@ -53,12 +53,14 @@ class SnippetDartdocParser {
   }
 
   List<Line> parsePreamble(File file) {
+    // Whether or not we're in the file-wide preamble section ("Examples can assume").
     bool inPreamble = false;
     final List<Line> preamble = <Line>[];
     int lineNumber = 0;
     int charPosition = 0;
     for (final String line in file.readAsLinesSync()) {
       if (inPreamble && line.trim().isEmpty) {
+        // Reached the end of the preamble.
         break;
       }
       if (!line.startsWith('// ')) {
@@ -76,15 +78,14 @@ class SnippetDartdocParser {
         preamble.add(Line(
           line.substring(3),
           startChar: charPosition,
+          endChar: charPosition + line.length + 1,
           element: '#preamble',
           line: lineNumber,
-          endChar: charPosition + line.length + 1,
         ));
       }
       lineNumber++;
       charPosition += line.length + 1;
     }
-    print('found Preamble:\n${preamble.map<String>((Line line) => line.code).join('\n')}');
     return preamble;
   }
 
@@ -123,8 +124,6 @@ class SnippetDartdocParser {
   }
 
   List<CodeSample> parseComment(List<Line> comments) {
-    // Whether or not we're in the file-wide preamble section ("Examples can assume").
-    bool inPreamble = false;
     // Whether or not we're in a code sample
     bool inSampleSection = false;
     // Whether or not we're in a snippet code sample (with template) specifically.
@@ -171,16 +170,6 @@ class SnippetDartdocParser {
         } else {
           block.add(line.code.replaceFirst(RegExp(r'\s*/// ?'), ''));
         }
-      } else if (inPreamble) {
-        if (line.code.isEmpty) {
-          inPreamble = false;
-          block.clear();
-        } else if (!line.code.startsWith('// ')) {
-          throw SnippetException('Unexpected content in sample code preamble.',
-              file: line.file?.path, line: line.line);
-        } else {
-          block.add(line.code.substring(3));
-        }
       } else if (inSampleSection) {
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
           if (inDart) {
@@ -220,11 +209,7 @@ class SnippetDartdocParser {
       if (!inSampleSection) {
         final RegExpMatch? sampleMatch =
             _dartDocSampleBeginRegex.firstMatch(trimmedLine);
-        if (line.code == '// Examples can assume:') {
-          assert(block.isEmpty);
-          startLine = line.copyWith(indent: 3);
-          inPreamble = true;
-        } else if (sampleMatch != null) {
+       if (sampleMatch != null) {
           inSnippet = sampleMatch != null &&
               (sampleMatch.namedGroup('type') == 'sample' ||
                   sampleMatch.namedGroup('type') == 'dartpad');
@@ -269,30 +254,35 @@ class SnippetDartdocParser {
   /// followed by an equals sign, allowing the argument parser to treat any
   /// "foo=bar" argument as "--foo=bar" (which is a dartdoc-ism).
   Iterable<String> _splitUpQuotedArgs(String argsAsString) {
+    // This function is used because the arg parser package doesn't handle
+    // quoted args.
+
     // Regexp to take care of splitting arguments, and handling the quotes
     // around arguments, if any.
     //
-    // Match group 1 is the "foo=" (or "--foo=") part of the option, if any.
-    // Match group 2 contains the quote character used (which is discarded).
-    // Match group 3 is a quoted arg, if any, without the quotes.
-    // Match group 4 is the unquoted arg, if any.
-    final RegExp argMatcher = RegExp(r'([a-zA-Z\-_0-9]+=)?' // option name
+    // Match group 1 (option) is the "foo=" (or "--foo=") part of the option, if any.
+    // Match group 2 (quote) contains the quote character used (which is discarded).
+    // Match group 3 (value) is a quoted arg, if any, without the quotes.
+    // Match group 4 (unquoted) is the unquoted arg, if any.
+    final RegExp argMatcher = RegExp(r'(?<option>[a-zA-Z\-_0-9]+=)?' // option name
         r'(?:' // Start a new non-capture group for the two possibilities.
-        r'''(["'])((?:\\{2})*|(?:.*?[^\\](?:\\{2})*))\2|''' // with quotes.
-        r'([^ ]+))'); // without quotes.
-    final Iterable<Match> matches = argMatcher.allMatches(argsAsString);
+        r'''(?<quote>["'])(?<value>(?:\\{2})*|(?:.*?[^\\](?:\\{2})*))\2|''' // with quotes.
+        r'(?<unquoted>[^ ]+))'); // without quotes.
+    final Iterable<RegExpMatch> matches = argMatcher.allMatches(argsAsString);
 
     // Remove quotes around args, and if convertToArgs is true, then for any
     // args that look like assignments (start with valid option names followed
     // by an equals sign), add a "--" in front so that they parse as options.
-    return matches.map<String>((Match match) {
+    return matches.map<String>((RegExpMatch match) {
       String option = '';
-      if (match[1] != null && !match[1]!.startsWith('-')) {
+      if (match.namedGroup('option') != null && !match.namedGroup('option')!.startsWith('-')) {
         option = '--';
       }
-      if (match[2] != null) {
+      if (match.namedGroup('quote') != null) {
         // This arg has quotes, so strip them.
-        return '$option${match[1] ?? ''}${match[3] ?? ''}${match[4] ?? ''}';
+        return '$option${match.namedGroup('quote') ?? ''}'
+            '${match.namedGroup('value') ?? ''}'
+            '${match.namedGroup('unquoted') ?? ''}';
       }
       return '$option${match[0]}';
     });
