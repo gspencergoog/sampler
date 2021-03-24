@@ -15,41 +15,6 @@ import 'package:pub_semver/pub_semver.dart';
 import 'interval_tree.dart';
 import 'model.dart';
 
-String getNextSymbolForLine(Line line) {
-  final ParseStringResult result = parseFile(
-      featureSet: FeatureSet.fromEnableFlags2(
-        sdkLanguageVersion: Version(2, 12, 1),
-        flags: <String>[],
-      ),
-      path: line.file!.absolute.path);
-  final _SourceVisitor<CompilationUnit> visitor =
-      _SourceVisitor<CompilationUnit>(line);
-  visitor.visitCompilationUnit(result.unit);
-  return visitor.name;
-}
-
-class _SourceVisitor<T> extends RecursiveAstVisitor<T> {
-  _SourceVisitor(this.line);
-
-  String name = '';
-  Line line;
-
-  @override
-  T? visitClassDeclaration(ClassDeclaration node) {
-    final List<Token> tokens = node.documentationComment?.tokens ?? <Token>[];
-    if (tokens.isNotEmpty) {
-      if (tokens.first.charOffset < line.startChar &&
-          tokens.last.charEnd > line.startChar) {
-        print('Class for $line is ${node.name.name}');
-        name = node.name.name;
-      }
-    }
-    //  final String commentText = tokens.map<String>((Token token) => token.toString()).join('\n');
-//    print('Class Declaration ${node.name.name}:\n$commentText');
-    return super.visitClassDeclaration(node);
-  }
-}
-
 Map<String, List<Line>> getFileComments(File file) {
   final ParseStringResult parseResult = parseFile(
       featureSet: FeatureSet.fromEnableFlags2(
@@ -62,7 +27,6 @@ Map<String, List<Line>> getFileComments(File file) {
       _CommentVisitor<CompilationUnit>(file);
   visitor.visitCompilationUnit(parseResult.unit);
   visitor.assignLineNumbers();
-  visitor.dumpResult();
   return visitor.results;
 }
 
@@ -92,7 +56,7 @@ class _LineNumberInterval extends Interval<_LineNumber<int>> {
 class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
   _CommentVisitor(this.file) : results = <String, List<Line>>{};
 
-  Map<String, List<Line>> results;
+  final Map<String, List<Line>> results;
 
   File file;
 
@@ -137,12 +101,13 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     }
   }
 
-  List<Line> _processComment(Comment comment) {
+  List<Line> _processComment(String element, Comment comment) {
     final List<Line> result = <Line>[];
     if (comment.tokens.isNotEmpty) {
       for (final Token token in comment.tokens) {
         result.add(Line(
           token.toString(),
+          element: element,
           file: file,
           startChar: token.charOffset,
           endChar: token.charEnd,
@@ -153,13 +118,19 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
   }
 
   @override
+  T? visitCompilationUnit(CompilationUnit node) {
+    results.clear();
+    return super.visitCompilationUnit(node);
+  }
+
+  @override
   T? visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     if (node.documentationComment != null &&
         node.documentationComment!.tokens.isNotEmpty) {
       for (final VariableDeclaration declaration in node.variables.variables) {
         if (!declaration.name.name.startsWith('_')) {
           results['global ${declaration.name.name}'] =
-              _processComment(node.documentationComment!);
+              _processComment(declaration.name.name, node.documentationComment!);
         }
       }
     }
@@ -172,7 +143,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
       results['typedef ${node.name.name}'] =
-          _processComment(node.documentationComment!);
+          _processComment(node.name.name, node.documentationComment!);
     }
     return super.visitGenericTypeAlias(node);
   }
@@ -184,7 +155,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
       for (final VariableDeclaration declaration in node.fields.variables) {
         if (!declaration.name.name.startsWith('_')) {
           results['field ${declaration.name.name}'] =
-              _processComment(node.documentationComment!);
+              _processComment(declaration.name.name, node.documentationComment!);
         }
       }
     }
@@ -198,7 +169,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name!.name.startsWith('_')) {
       results['constructor ${node.name!.name}'] =
-          _processComment(node.documentationComment!);
+          _processComment(node.name!.name, node.documentationComment!);
     }
     return super.visitConstructorDeclaration(node);
   }
@@ -209,7 +180,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
       results['function ${node.name.name}'] =
-          _processComment(node.documentationComment!);
+          _processComment(node.name.name, node.documentationComment!);
     }
     return super.visitFunctionDeclaration(node);
   }
@@ -220,7 +191,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
       results['method ${node.name.name}'] =
-          _processComment(node.documentationComment!);
+          _processComment(node.name.name, node.documentationComment!);
     }
     return super.visitMethodDeclaration(node);
   }
@@ -231,7 +202,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
       results['class ${node.name.name}'] =
-          _processComment(node.documentationComment!);
+          _processComment(node.name.name, node.documentationComment!);
     }
     return super.visitClassDeclaration(node);
   }

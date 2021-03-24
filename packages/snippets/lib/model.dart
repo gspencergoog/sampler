@@ -9,13 +9,17 @@ import 'package:snippets/util.dart';
 
 /// A class to represent a line of input code.
 class Line {
-  const Line(this.code,
-      {this.file,
-      this.line = -1,
-      this.startChar = -1,
-      this.endChar = -1, // Should include any line terminators, even if code doesn't.
-      this.indent = 0});
+  const Line(
+    this.code, {
+    this.file,
+    this.element,
+    this.line = -1,
+    this.startChar = -1,
+    this.endChar = -1,
+    this.indent = 0,
+  });
   final File? file;
+  final String? element;
   final int line;
   final int startChar;
   final int endChar;
@@ -29,22 +33,38 @@ class Line {
     return toString();
   }
 
-  Line copyWith({String? code,
-      File? file,
-        int? line,
-        int? startChar,
-        int? endChar, // Should include any line terminators, even if code doesn't.
-        int? indent}) {
-    return Line(code ?? this.code,
-        file: file ?? this.file,
-        line: line ?? this.line,
-        startChar: startChar ?? this.startChar,
-        endChar: endChar ?? this.endChar,
-        indent: indent ?? this.indent);
+  Line copyWith({
+    String? element,
+    String? code,
+    File? file,
+    int? line,
+    int? startChar,
+    int? endChar,
+    int? indent,
+  }) {
+    return Line(
+      code ?? this.code,
+      element: element ?? this.element,
+      file: file ?? this.file,
+      line: line ?? this.line,
+      startChar: startChar ?? this.startChar,
+      endChar: endChar ?? this.endChar,
+      indent: indent ?? this.indent,
+    );
   }
 
   @override
   String toString() => '$file:${line == -1 ? '??' : line}: $code';
+}
+
+// A class containing the name and contents associated with a code block in a
+// snippet.
+class TemplateInjection {
+  TemplateInjection(this.name, this.contents, {this.language = ''});
+  final String name;
+  final List<String> contents;
+  final String language;
+  String get mergedContent => contents.join('\n').trim();
 }
 
 /// A base class to represent a block of any kind of sample code, marked by
@@ -58,20 +78,19 @@ abstract class CodeSample {
         assert(args.isNotEmpty),
         id = _createNameFromSource(args.first, input.first);
 
-  final SnippetType type;
+  final SampleType type;
   final List<String> args;
   final String id;
   final List<Line> input;
   String description = '';
   String element = '';
   String output = '';
-  List<SnippetInjection> parts = <SnippetInjection>[];
+  List<TemplateInjection> parts = <TemplateInjection>[];
   Line get start => input.first;
 
   String get template {
-    if (type != SnippetType.sample && type != SnippetType.dartpad) {
-      throw SnippetException('Cannot create template for non-application '
-          'samples (samples that are not either "sample" or "dartpad")');
+    if (type != SampleType.sample && type != SampleType.dartpad) {
+      return '';
     }
     final ArgParser parser = ArgParser();
     parser.addOption('template', defaultsTo: '');
@@ -93,7 +112,10 @@ abstract class CodeSample {
     final StringBuffer buf = StringBuffer('${args.join(' ')}:\n');
     for (final Line line in input) {
       buf.writeln(
-          ' [${line.startChar == -1 ? '??' : line.startChar}] ${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.code}');
+        ' [${line.startChar == -1 ? '??' : line.startChar}] '
+        '${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.code} '
+        ' -- ${line.element}',
+      );
     }
     return buf.toString();
   }
@@ -107,8 +129,8 @@ abstract class CodeSample {
 /// blocks for an entire file, since they are evaluated in the analysis tool a
 /// single block.
 class Snippet extends CodeSample {
-  Snippet(List<Line> input, {this.dartVersionOverride = ''})
-      : super(SnippetType.snippet, <String>['snippet'], input);
+  Snippet(List<Line> input)
+      : super(SampleType.snippet, <String>['snippet'], input);
 
   factory Snippet.combine(List<Snippet> sections) {
     final List<Line> code =
@@ -121,12 +143,10 @@ class Snippet extends CodeSample {
     int startPos = firstLine.startChar;
     for (int i = 0; i < code.length; ++i) {
       codeLines.add(
-        Line(
-          code[i],
-          file: firstLine.file,
+        firstLine.copyWith(
+          code: code[i],
           line: firstLine.line + i,
           startChar: startPos,
-          indent: firstLine.indent,
         ),
       );
       startPos += code[i].length + 1;
@@ -142,12 +162,10 @@ class Snippet extends CodeSample {
     int startPos = firstLine.startChar;
     for (int i = 0; i < code.length; ++i) {
       codeLines.add(
-        Line(
-          code[i],
-          file: firstLine.file,
+        firstLine.copyWith(
+          code: code[i],
           line: firstLine.line + i,
           startChar: startPos,
-          indent: firstLine.indent,
         ),
       );
       startPos += code[i].length + 1;
@@ -161,15 +179,6 @@ class Snippet extends CodeSample {
 
   @override
   Line get start => input.firstWhere((Line line) => line.file != null);
-
-  final String dartVersionOverride;
-
-  Snippet copyWith({String? dartVersionOverride = ''}) {
-    if (dartVersionOverride == null) {
-      return Snippet(input);
-    }
-    return Snippet(input, dartVersionOverride: dartVersionOverride);
-  }
 }
 
 /// A class to represent an application sample in the dartdoc comments, marked
@@ -184,8 +193,7 @@ class ApplicationSample extends CodeSample {
     Line start = const Line(''),
     List<String> input = const <String>[],
     List<String> args = const <String>[],
-    this.serial = -1,
-    SnippetType type = SnippetType.sample,
+    SampleType type = SampleType.sample,
   })  : assert(args.isNotEmpty),
         super(type, args, _convertInput(input, start));
 
@@ -194,12 +202,10 @@ class ApplicationSample extends CodeSample {
     int startChar = start.startChar;
     return input.map<Line>(
       (String line) {
-        final Line result = Line(
-          line,
+        final Line result = start.copyWith(
+          code: line,
           line: lineNumber,
           startChar: startChar,
-          file: start.file,
-          indent: start.indent,
         );
         lineNumber++;
         startChar += line.length + 1;
@@ -207,16 +213,4 @@ class ApplicationSample extends CodeSample {
       },
     ).toList();
   }
-
-  final int serial;
-}
-
-// A Tuple containing the name and contents associated with a code block in a
-// snippet.
-class SnippetInjection {
-  SnippetInjection(this.name, this.contents, {this.language = ''});
-  final String name;
-  final List<String> contents;
-  final String language;
-  String get mergedContent => contents.join('\n').trim();
 }

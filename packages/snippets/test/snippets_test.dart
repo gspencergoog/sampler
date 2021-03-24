@@ -37,20 +37,20 @@ main() {
   {{code}}
 }
 ''');
-      configuration.getHtmlSkeletonFile(SnippetType.sample).writeAsStringSync('''
+      configuration.getHtmlSkeletonFile(SampleType.sample).writeAsStringSync('''
 <div>HTML Bits</div>
 {{description}}
 <pre>{{code}}</pre>
 <pre>{{app}}</pre>
 <div>More HTML Bits</div>
 ''');
-      configuration.getHtmlSkeletonFile(SnippetType.snippet).writeAsStringSync('''
+      configuration.getHtmlSkeletonFile(SampleType.snippet).writeAsStringSync('''
 <div>HTML Bits</div>
 {{description}}
 <pre>{{code}}</pre>
 <div>More HTML Bits</div>
 ''');
-      configuration.getHtmlSkeletonFile(SnippetType.sample, showDartPad: true).writeAsStringSync('''
+      configuration.getHtmlSkeletonFile(SampleType.sample, showDartPad: true).writeAsStringSync('''
 <div>HTML Bits (DartPad-style)</div>
 <iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id={{id}}&sample_channel={{channel}}"></iframe>
 <div>More HTML Bits</div>
@@ -83,7 +83,7 @@ void main() {
 
       final String html = generator.generate(
         inputFile,
-        SnippetType.sample,
+        SampleType.sample,
         template: 'template',
         metadata: <String, Object>{
           'id': 'id',
@@ -128,7 +128,7 @@ void main() {
 
       final String html = generator.generate(
         inputFile,
-        SnippetType.snippet,
+        SampleType.snippet,
         metadata: <String, Object>{'id': 'id'},
       );
       expect(html, contains('<div>HTML Bits</div>'));
@@ -156,7 +156,7 @@ void main() {
 
       final String html = generator.generate(
         inputFile,
-        SnippetType.sample,
+        SampleType.sample,
         showDartPad: true,
         template: 'template',
         metadata: <String, Object>{'id': 'id', 'channel': 'stable'},
@@ -186,7 +186,7 @@ void main() {
 
       generator.generate(
         inputFile,
-        SnippetType.sample,
+        SampleType.sample,
         template: 'template',
         output: outputFile,
         metadata: <String, Object>{'sourcePath': 'some/path.dart', 'id': 'id', 'channel': 'stable'},

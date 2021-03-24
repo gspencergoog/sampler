@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 import 'dart:io';
+
+import 'analysis.dart';
 import 'model.dart';
 import 'util.dart';
 
@@ -32,10 +34,10 @@ class SnippetDartdocParser {
   /// A RegExp that matches a Dart constructor.
   static final RegExp _constructorRegExp =
       RegExp(r'(const\s+)?_*[A-Z][a-zA-Z0-9<>._]*\(');
-
-  /// A RegExp that matches a dart version specification in an example preamble.
-  static final RegExp _dartVersionOverrideRegExp =
-      RegExp(r'\/\/ (?<override>\/\/ @dart = (?<version>[0-9]+\.[0-9]+))');
+  //
+  // /// A RegExp that matches a dart version specification in an example preamble.
+  // static final RegExp _dartVersionOverrideRegExp =
+  //     RegExp(r'\/\/ (?<override>\/\/ @dart = (?<version>[0-9]+\.[0-9]+))');
 
   /// A serial number so that we can create unique expression names when we
   /// generate them.
@@ -43,17 +45,84 @@ class SnippetDartdocParser {
 
   /// Extracts the samples from the Dart files in [files], writes them
   /// to disk, and adds them to the appropriate [sectionMap] or [sampleMap].
-  Map<String, CodeSample> parse(
+  List<CodeSample> parse(
     File file, {
     bool silent = false,
   }) {
-    final List<Snippet> snippets = <Snippet>[];
-    final List<ApplicationSample> samples = <ApplicationSample>[];
+    return parseFromComments(getFileComments(file), silent: silent, preamble: parsePreamble(file));
+  }
+
+  List<Line> parsePreamble(File file) {
+    bool inPreamble = false;
+    final List<Line> preamble = <Line>[];
+    int lineNumber = 0;
+    int charPosition = 0;
+    for (final String line in file.readAsLinesSync()) {
+      if (inPreamble && line.trim().isEmpty) {
+        break;
+      }
+      if (!line.startsWith('// ')) {
+        lineNumber++;
+        charPosition += line.length + 1;
+        continue;
+      }
+      if (line == '// Examples can assume:') {
+        inPreamble = true;
+        lineNumber++;
+        charPosition += line.length + 1;
+        continue;
+      }
+      if (inPreamble) {
+        preamble.add(Line(
+          line.substring(3),
+          startChar: charPosition,
+          element: '#preamble',
+          line: lineNumber,
+          endChar: charPosition + line.length + 1,
+        ));
+      }
+      lineNumber++;
+      charPosition += line.length + 1;
+    }
+    print('found Preamble:\n${preamble.map<String>((Line line) => line.code).join('\n')}');
+    return preamble;
+  }
+
+  List<CodeSample> parseFromComments(
+    Map<String, List<Line>> comments, {
+    bool silent = false,
+    List<Line> preamble = const <Line>[],
+  }) {
     int dartpadCount = 0;
     int sampleCount = 0;
+    int snippetCount = 0;
 
-    final List<String> sampleLines = file.readAsLinesSync();
-    final List<Snippet> preambleSections = <Snippet>[];
+    final List<CodeSample> samples = <CodeSample>[];
+    for (final String commentKey in comments.keys) {
+      final List<CodeSample> newSamples = parseComment(comments[commentKey]!);
+      for (final CodeSample sample in newSamples) {
+        switch (sample.type) {
+          case SampleType.sample:
+            sampleCount++;
+            break;
+          case SampleType.dartpad:
+            dartpadCount++;
+            break;
+          case SampleType.snippet:
+            snippetCount++;
+            break;
+        }
+        samples.addAll(newSamples);
+      }
+    }
+    if (!silent) {
+      print('Found $snippetCount snippet code blocks, $sampleCount '
+          'sample code sections, and $dartpadCount dartpad sections.');
+    }
+    return samples;
+  }
+
+  List<CodeSample> parseComment(List<Line> comments) {
     // Whether or not we're in the file-wide preamble section ("Examples can assume").
     bool inPreamble = false;
     // Whether or not we're in a code sample
@@ -62,29 +131,26 @@ class SnippetDartdocParser {
     bool inSnippet = false;
     // Whether or not we're in a '```dart' segment.
     bool inDart = false;
-    String? dartVersionOverride;
-    int lineNumber = 0;
-    int charPosition = 0;
     final List<String> block = <String>[];
     List<String> snippetArgs = <String>[];
     Line startLine = const Line('');
-    for (final String line in sampleLines) {
-      lineNumber += 1;
-      charPosition += line.length + 1; // add one for the newline.
-      final String trimmedLine = line.trim();
+    final List<CodeSample> samples = <CodeSample>[];
+
+    for (final Line line in comments) {
+      final String trimmedLine = line.code.trim();
       if (inSnippet) {
         if (!trimmedLine.startsWith(_dartDocPrefix)) {
           throw SnippetException('Snippet section unterminated.',
-              file: file.path, line: lineNumber);
+              file: line.file?.path, line: line.line);
         }
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
-          late SnippetType snippetType;
+          late SampleType snippetType;
           switch (snippetArgs.first) {
             case 'sample':
-              snippetType = SnippetType.sample;
+              snippetType = SampleType.sample;
               break;
             case 'dartpad':
-              snippetType = SnippetType.dartpad;
+              snippetType = SampleType.dartpad;
               break;
             default:
               throw SnippetException(
@@ -95,7 +161,6 @@ class SnippetDartdocParser {
               start: startLine,
               input: block,
               args: snippetArgs,
-              serial: samples.length,
               type: snippetType,
             ),
           );
@@ -104,105 +169,68 @@ class SnippetDartdocParser {
           inSnippet = false;
           inSampleSection = false;
         } else {
-          block.add(line.replaceFirst(RegExp(r'\s*/// ?'), ''));
+          block.add(line.code.replaceFirst(RegExp(r'\s*/// ?'), ''));
         }
       } else if (inPreamble) {
-        if (line.isEmpty) {
+        if (line.code.isEmpty) {
           inPreamble = false;
-          // If there's only a dartVersionOverride in the preamble, don't add
-          // it as a section. The dartVersionOverride was processed below.
-          if (dartVersionOverride == null || block.isNotEmpty) {
-            preambleSections.add(_processBlock(startLine, block));
-          }
           block.clear();
-        } else if (!line.startsWith('// ')) {
+        } else if (!line.code.startsWith('// ')) {
           throw SnippetException('Unexpected content in sample code preamble.',
-              file: file.path, line: lineNumber);
+              file: line.file?.path, line: line.line);
         } else {
-          final RegExpMatch? override =
-              _dartVersionOverrideRegExp.firstMatch(line);
-          if (override != null) {
-            dartVersionOverride = override.namedGroup('override');
-          } else {
-            block.add(line.substring(3));
-          }
+          block.add(line.code.substring(3));
         }
       } else if (inSampleSection) {
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
           if (inDart) {
             throw SnippetException(
                 "Dart section didn't terminate before end of sample",
-                file: file.path,
-                line: lineNumber);
+                file: line.file?.path,
+                line: line.line);
           }
           inSampleSection = false;
         }
         if (inDart) {
           if (_codeBlockEndRegex.hasMatch(trimmedLine)) {
             inDart = false;
-            final Snippet processed = _processBlock(startLine, block);
-            final Snippet combinedSection = preambleSections.isEmpty
-                ? processed
-                : Snippet.combine(preambleSections..add(processed));
-            snippets.add(combinedSection.copyWith(
-                dartVersionOverride: dartVersionOverride));
+            samples.add(_processBlock(startLine, block));
             block.clear();
           } else if (trimmedLine == _dartDocPrefix) {
             block.add('');
           } else {
-            final int index = line.indexOf(_dartDocPrefixWithSpace);
+            final int index = line.code.indexOf(_dartDocPrefixWithSpace);
             if (index < 0) {
               throw SnippetException(
                 'Dart section inexplicably did not contain "$_dartDocPrefixWithSpace" prefix.',
-                file: file.path,
-                line: lineNumber,
+                file: line.file?.path,
+                line: line.line,
               );
             }
-            block.add(line.substring(index + 4));
+            block.add(line.code.substring(index + 4));
           }
         } else if (_codeBlockStartRegex.hasMatch(trimmedLine)) {
           assert(block.isEmpty);
-          startLine = Line(
-            '',
-            file: file,
-            line: lineNumber + 1,
-            startChar: charPosition,
-            indent: line.indexOf(_dartDocPrefixWithSpace) +
-                _dartDocPrefixWithSpace.length,
-          );
+          startLine = line.copyWith(
+              indent: line.code.indexOf(_dartDocPrefixWithSpace) +
+                  _dartDocPrefixWithSpace.length);
           inDart = true;
         }
       }
       if (!inSampleSection) {
         final RegExpMatch? sampleMatch =
             _dartDocSampleBeginRegex.firstMatch(trimmedLine);
-        if (line == '// Examples can assume:') {
+        if (line.code == '// Examples can assume:') {
           assert(block.isEmpty);
-          startLine = Line(
-            '',
-            file: file,
-            line: lineNumber + 1,
-            startChar: charPosition,
-            indent: 3,
-          );
+          startLine = line.copyWith(indent: 3);
           inPreamble = true;
         } else if (sampleMatch != null) {
           inSnippet = sampleMatch != null &&
               (sampleMatch.namedGroup('type') == 'sample' ||
                   sampleMatch.namedGroup('type') == 'dartpad');
           if (inSnippet) {
-            if (sampleMatch.namedGroup('type') == 'sample') {
-              sampleCount++;
-            }
-            if (sampleMatch.namedGroup('type') == 'dartpad') {
-              dartpadCount++;
-            }
-            startLine = Line(
-              '',
-              file: file,
-              line: lineNumber + 1,
-              startChar: charPosition,
-              indent: line.indexOf(_dartDocPrefixWithSpace) +
+            startLine = line.copyWith(
+              indent: line.code.indexOf(_dartDocPrefixWithSpace) +
                   _dartDocPrefixWithSpace.length,
             );
             if (sampleMatch.namedGroup('args') != null) {
@@ -222,23 +250,13 @@ class SnippetDartdocParser {
             .hasMatch(trimmedLine)) {
           throw SnippetException(
             "Found deprecated '## Sample code' section: use {@tool snippet}...{@end-tool} instead.",
-            file: file.path,
-            line: lineNumber,
+            file: line.file?.path,
+            line: line.line,
           );
         }
       }
     }
-    if (!silent)
-      print('Found ${snippets.length} snippet code blocks, $sampleCount '
-          'sample code sections, and $dartpadCount dartpad sections.');
-    final Map<String, CodeSample> sectionMap = <String, CodeSample>{};
-    for (final Snippet snippet in snippets) {
-      sectionMap[snippet.id] = snippet;
-    }
-    for (final ApplicationSample sample in samples) {
-      sectionMap[sample.id] = sample;
-    }
-    return sectionMap;
+    return samples;
   }
 
   /// Helper to process arguments given as a (possibly quoted) string.
@@ -316,8 +334,8 @@ class SnippetDartdocParser {
       final List<Snippet> subsections = <Snippet>[];
       int startPos = line.startChar;
       for (int index = 0; index < block.length; index += 1) {
-        // Each section of the dart code that is either split by a blank line, or with '// ...' is
-        // treated as a separate code block.
+        // Each section of the dart code that is either split by a blank line, or with
+        // '// ...' is treated as a separate code block.
         if (block[index] == '' || block[index] == '// ...') {
           if (subLine == null)
             throw SnippetException(
@@ -333,12 +351,10 @@ class SnippetDartdocParser {
             buffer.add(
                 '/${block[index]}'); // so that it doesn't start with "// " and get caught in this again
         } else {
-          subLine ??= Line(
-            block[index],
-            file: line.file,
+          subLine ??= line.copyWith(
+            code: block[index],
             line: line.line + index,
             startChar: startPos,
-            indent: line.indent,
           );
           buffer.add(block[index]);
           startPos += block[index].length + 1;

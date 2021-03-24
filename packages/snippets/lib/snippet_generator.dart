@@ -11,12 +11,10 @@ import 'dart:io';
 
 import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as path;
-import 'package:snippets/analysis.dart';
 
 import 'configuration.dart';
 import 'model.dart';
 import 'util.dart';
-
 
 /// Generates the snippet HTML, as well as saving the output snippet main to
 /// the output directory.
@@ -41,7 +39,7 @@ class SnippetGenerator {
   DartFormatter(pageWidth: 80, fixes: StyleFix.all);
 
   /// This returns the output file for a given snippet ID. Only used for
-  /// [SnippetType.sample] snippets.
+  /// [SampleType.sample] snippets.
   File getOutputFile(String id) =>
       File(path.join(configuration.outputDirectory.path, '$id.dart'));
 
@@ -56,15 +54,15 @@ class SnippetGenerator {
 
   /// Injects the [injections] into the [template], and turning the
   /// "description" injection into a comment. Only used for
-  /// [SnippetType.sample] snippets.
-  String interpolateTemplate(List<SnippetInjection> injections, String template,
+  /// [SampleType.sample] snippets.
+  String interpolateTemplate(List<TemplateInjection> injections, String template,
       Map<String, Object?> metadata) {
     final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
     return template.replaceAllMapped(moustacheRegExp, (Match match) {
       if (match[1] == 'description') {
         // Place the description into a comment.
         final List<String> description = injections
-            .firstWhere((SnippetInjection tuple) => tuple.name == match[1])
+            .firstWhere((TemplateInjection tuple) => tuple.name == match[1])
             .contents
             .map<String>((String line) => '// $line')
             .toList();
@@ -84,7 +82,7 @@ class SnippetGenerator {
         // "optional" in the input: users shouldn't be forced to add an empty
         // "```dart preamble" section if that section would be empty.
         final int componentIndex = injections.indexWhere(
-                (SnippetInjection injection) => injection.name == match[1]);
+                (TemplateInjection injection) => injection.name == match[1]);
         if (componentIndex == -1) {
           return (metadata[match[1]] ?? '').toString();
         }
@@ -95,10 +93,10 @@ class SnippetGenerator {
 
   /// Parses the input for the various code and description segments, and
   /// returns them in the order found.
-  List<SnippetInjection> parseInput(CodeSample sample) {
+  List<TemplateInjection> parseInput(CodeSample sample) {
     bool inCodeBlock = false;
     final List<String> description = <String>[];
-    final List<SnippetInjection> components = <SnippetInjection>[];
+    final List<TemplateInjection> components = <TemplateInjection>[];
     String? language;
     final RegExp codeStartEnd =
     RegExp(r'^\s*```(?<language>[-\w]+|[-\w]+ (?<section>[-\w]+))?\s*$');
@@ -110,12 +108,12 @@ class SnippetGenerator {
         if (match.namedGroup('language') != null) {
           language = match[1]!;
           if (match.namedGroup('section') != null) {
-            components.add(SnippetInjection(
+            components.add(TemplateInjection(
                 'code-${match.namedGroup('section')}', <String>[],
                 language: language));
           } else {
             components
-                .add(SnippetInjection('code', <String>[], language: language));
+                .add(TemplateInjection('code', <String>[], language: language));
           }
         } else {
           language = null;
@@ -129,8 +127,8 @@ class SnippetGenerator {
         components.last.contents.add(line);
       }
     }
-    sample.parts = <SnippetInjection>[
-      SnippetInjection('description', description),
+    sample.parts = <TemplateInjection>[
+      TemplateInjection('description', description),
       ...components,
     ];
     return sample.parts;
@@ -156,34 +154,35 @@ class SnippetGenerator {
   /// comment markers).
   ///
   /// The [type] is the type of snippet to create: either a
-  /// [SnippetType.sample] or a [SnippetType.snippet].
+  /// [SampleType.sample] or a [SampleType.snippet].
   ///
   /// [showDartPad] indicates whether DartPad should be shown where possible.
   /// Currently, this value only has an effect if [type] is
-  /// [SnippetType.sample], in which case an alternate skeleton file is
+  /// [SampleType.sample], in which case an alternate skeleton file is
   /// used to create the final HTML output.
   ///
   /// The [template] must not be null if the [type] is
-  /// [SnippetType.sample], and specifies the name of the template to use
+  /// [SampleType.sample], and specifies the name of the template to use
   /// for the application code.
   ///
   /// The [id] is a string ID to use for the output file, and to tell the user
   /// about in the `flutter create` hint. It must not be null if the [type] is
-  /// [SnippetType.sample].
+  /// [SampleType.sample].
   String generate(
       CodeSample sample, {
-        Map<String, Object?> metadata = const <String, Object>{},
+        Map<String, Object?>? metadata,
       }) {
-    final String template = sample.template;
-    assert(template != null || (sample.type != SnippetType.sample && sample.type != SnippetType.dartpad));
-    // assert(metadata['id'] != null);
+    metadata ??= <String, Object>{};
+    metadata['id'] ??= sample.id;
+    metadata['element'] ??= sample.start.element;
 
     configuration.createOutputDirectoryIfNeeded();
 
-    final List<SnippetInjection> snippetData = parseInput(sample);
+    final List<TemplateInjection> snippetData = parseInput(sample);
     switch (sample.type) {
-      case SnippetType.dartpad:
-      case SnippetType.sample:
+      case SampleType.dartpad:
+      case SampleType.sample:
+        final String template = sample.template;
         final Directory templatesDir = configuration.templatesDirectory;
         if (templatesDir == null) {
           stderr.writeln('Unable to find the templates directory.');
@@ -206,19 +205,18 @@ class SnippetGenerator {
           stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
           errorExit('Unable to format snippet app template: $exception');
         }
-        snippetData.add(SnippetInjection('app', app.split('\n')));
+        snippetData.add(TemplateInjection('app', app.split('\n')));
         sample.output = app;
         final int descriptionIndex = snippetData
-            .indexWhere((SnippetInjection data) => data.name == 'description');
+            .indexWhere((TemplateInjection data) => data.name == 'description');
         final String descriptionString = descriptionIndex == -1
             ? ''
             : snippetData[descriptionIndex].mergedContent;
         sample.description = descriptionString;
         break;
-      case SnippetType.snippet:
+      case SampleType.snippet:
         break;
     }
-    getNextSymbolForLine(sample.start);
     return sample.output;
   }
 }

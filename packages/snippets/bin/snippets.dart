@@ -35,16 +35,16 @@ void main(List<String> argList) {
   final Map<String, String> environment = Platform.environment;
   final ArgParser parser = ArgParser();
   final List<String> snippetTypes =
-      SnippetType.values.map<String>((SnippetType type) => getEnumName(type)).toList();
+      SampleType.values.map<String>((SampleType type) => getEnumName(type)).toList();
   parser.addOption(
     _kTypeOption,
-    defaultsTo: getEnumName(SnippetType.sample),
+    defaultsTo: getEnumName(SampleType.sample),
     allowed: snippetTypes,
     allowedHelp: <String, String>{
-      getEnumName(SnippetType.sample):
+      getEnumName(SampleType.sample):
           'Produce a code sample application complete with embedding the sample in an '
           'application template.',
-      getEnumName(SnippetType.snippet):
+      getEnumName(SampleType.snippet):
           'Produce a nicely formatted piece of sample code. Does not embed the '
           'sample into an application template.',
     },
@@ -110,10 +110,10 @@ void main(List<String> argList) {
     exit(0);
   }
 
-  final SnippetType snippetType = SnippetType.values
-      .firstWhere((SnippetType type) => getEnumName(type) == args[_kTypeOption]);
+  final SampleType snippetType = SampleType.values
+      .firstWhere((SampleType type) => getEnumName(type) == args[_kTypeOption]);
 
-  if (args[_kShowDartPad] == true && snippetType != SnippetType.sample) {
+  if (args[_kShowDartPad] == true && snippetType != SampleType.sample) {
     errorExit('${args[_kTypeOption]} was selected, but the --dartpad flag is only valid '
       'for application sample code.');
   }
@@ -130,7 +130,7 @@ void main(List<String> argList) {
   }
 
   String? template;
-  if (snippetType == SnippetType.sample) {
+  if (snippetType == SampleType.sample) {
     final String templateArg = args[_kTemplateOption] as String;
     if (templateArg == null || templateArg.isEmpty) {
       stderr.writeln(parser.usage);

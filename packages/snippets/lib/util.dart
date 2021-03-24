@@ -7,7 +7,7 @@ import 'dart:io';
 import 'package:process/process.dart' show ProcessManager, LocalProcessManager;
 
 /// Defines the different types of snippets.
-enum SnippetType {
+enum SampleType {
   /// A snippet that includes the code interpolated into an application
   /// template.
   sample,
