@@ -208,10 +208,13 @@ class SnippetGenerator {
     return buffer.toString();
   }
 
-  String generateHtml(CodeSample sample, {Map<String, Object?> metadata = const <String, Object>{}}) {
+  String generateHtml(CodeSample sample) {
+    if (sample.type == SampleType.bare) {
+      return '';
+    }
     final String skeleton =
     _loadFileAsUtf8(configuration.getHtmlSkeletonFile(sample.type));
-    return interpolateSkeleton(sample.type, sample.parts, skeleton, metadata);
+    return interpolateSkeleton(sample.type, sample.parts, skeleton, sample.metadata);
   }
 
   /// The main routine for generating snippets.
@@ -227,23 +230,17 @@ class SnippetGenerator {
   /// [SampleType.sample], in which case an alternate skeleton file is
   /// used to create the final HTML output.
   ///
-  /// The [template] must not be null if the [type] is
-  /// [SampleType.sample], and specifies the name of the template to use
-  /// for the application code.
+  /// The optional [template] parameter can be used to override specifies the
+  /// name of the template to use for interpolating the application code.
+  /// Defaults to the template provided by the [CodeSample].
   ///
   /// The [id] is a string ID to use for the output file, and to tell the user
   /// about in the `flutter create` hint. It must not be null if the [type] is
   /// [SampleType.sample].
   String generateCode(
     CodeSample sample, {
-    String? template,
     File? output,
-    Map<String, Object?>? metadata,
   }) {
-    metadata ??= <String, Object>{};
-    metadata['id'] ??= sample.id;
-    metadata['element'] ??= sample.start.element;
-
     configuration.createOutputDirectoryIfNeeded();
 
     final List<TemplateInjection> snippetData = parseInput(sample);
@@ -255,7 +252,7 @@ class SnippetGenerator {
           stderr.writeln('Unable to find the templates directory.');
           exit(1);
         }
-        final String templateName = template ?? sample.template;
+        final String templateName = sample.template;
         final File? templateFile = getTemplatePath(templateName, templatesDir: templatesDir);
         if (templateFile == null) {
           stderr.writeln('The template $templateName was not found in the templates '
@@ -263,7 +260,7 @@ class SnippetGenerator {
           exit(1);
         }
         final String templateContents = _loadFileAsUtf8(templateFile);
-        String app = interpolateTemplate(snippetData, templateContents, metadata);
+        String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
 
         try {
           app = formatter.format(app);
@@ -280,10 +277,46 @@ class SnippetGenerator {
         sample.description = descriptionString;
         break;
       case SampleType.snippet:
+        const String templateContents = '{{description}}\n{{code}}';
+        String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
+
+        try {
+          app = formatter.format(app);
+        } on FormatterException catch (exception) {
+          stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
+          errorExit('Unable to format snippet app template: $exception');
+        }
+        snippetData.add(TemplateInjection('app', app.split('\n')));
+        sample.output = app;
+        final int descriptionIndex =
+        snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
+        final String descriptionString =
+        descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
+        sample.description = descriptionString;
+        break;
+      case SampleType.bare:
+        const String templateContents = '{{code}}';
+        String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
+
+        try {
+          app = formatter.format(app);
+        } on FormatterException catch (exception) {
+          stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
+          errorExit('Unable to format snippet app template: $exception');
+        }
+        snippetData.add(TemplateInjection('app', app.split('\n')));
+        sample.output = app;
+        sample.description = '';
         break;
     }
+    sample.metadata['description'] = sample.description;
     if (output != null) {
       output.writeAsStringSync(sample.output);
+
+      final File metadataFile = File(path.join(path.dirname(output.path),
+          '${path.basenameWithoutExtension(output.path)}.json'));
+      sample.metadata['file'] = path.basename(output.path);
+      metadataFile.writeAsStringSync(jsonEncoder.convert(sample.metadata));
     }
     return sample.output;
   }

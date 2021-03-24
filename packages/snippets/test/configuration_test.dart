@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:test/test.dart' hide TypeMatcher, isInstanceOf;
 
-import 'package:snippets/configuration.dart';
+import 'package:snippets/snippets.dart';
 
 void main() {
   group('Configuration', () {
@@ -33,19 +33,19 @@ void main() {
     });
     test('html skeleton file for sample is correct', () async {
       expect(
-          config.getHtmlSkeletonFile(SnippetType.snippet).path,
+          config.getHtmlSkeletonFile(SampleType.snippet).path,
           matches(RegExp(
               r'[/\\]flutter sdk[/\\]dev[/\\]snippets[/\\]config[/\\]skeletons[/\\]snippet.html')));
     });
     test('html skeleton file for app with no dartpad is correct', () async {
       expect(
-          config.getHtmlSkeletonFile(SnippetType.sample).path,
+          config.getHtmlSkeletonFile(SampleType.sample).path,
           matches(RegExp(
               r'[/\\]flutter sdk[/\\]dev[/\\]snippets[/\\]config[/\\]skeletons[/\\]sample.html')));
     });
     test('html skeleton file for app with dartpad is correct', () async {
       expect(
-          config.getHtmlSkeletonFile(SnippetType.sample, showDartPad: true).path,
+          config.getHtmlSkeletonFile(SampleType.dartpad).path,
           matches(RegExp(
               r'[/\\]flutter sdk[/\\]dev[/\\]snippets[/\\]config[/\\]skeletons[/\\]dartpad-sample.html')));
     });

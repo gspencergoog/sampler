@@ -30,33 +30,6 @@ String getChannelName() {
       : gitBranchMatch.namedGroup('branch')!.split('...').first;
 }
 
-List<Line> getLinesFromInput(
-    {int? startLine,
-    String? element,
-    required File input,
-    required String type,
-    required String template}) {
-  final List<Line> inputLines = <Line>[];
-  int lineNumber = startLine ?? 0;
-  for (final String line in <String>[
-    // The parser wants to read the arguments from the input, so we create a new
-    // tool line to match the given arguments, so that we can use the same parser for
-    // editing and docs generation.
-    '/// {@tool $type${template.isNotEmpty ? ' --template=$template}' : ''}}',
-    // Snippet input comes in with the comment markers stripped, so we add them
-    // back to make it conform to the source format, so we can use the same
-    // parser for editing samples as we do for processing docs.
-    ...input.readAsLinesSync().map<String>((String line) => '/// $line'),
-    '/// {@end-tool}',
-  ]) {
-    inputLines.add(
-      Line(line, element: element ?? '', line: lineNumber),
-    );
-    lineNumber++;
-  }
-  return inputLines;
-}
-
 /// Generates snippet dartdoc output for a given input, and creates any sample
 /// applications needed by the snippet.
 void main(List<String> argList) {
@@ -133,7 +106,7 @@ void main(List<String> argList) {
     exit(0);
   }
 
-  final SampleType snippetType =
+  final SampleType sampleType =
       SampleType.values.firstWhere((SampleType type) => getEnumName(type) == args[_kTypeOption]);
 
   if (args[_kInputOption] == null) {
@@ -148,7 +121,7 @@ void main(List<String> argList) {
   }
 
   String? template;
-  if (snippetType == SampleType.sample || snippetType == SampleType.dartpad) {
+  if (sampleType == SampleType.sample || sampleType == SampleType.dartpad) {
     final String templateArg = args[_kTemplateOption] as String;
     if (templateArg == null || templateArg.isEmpty) {
       stderr.writeln(parser.usage);
@@ -189,19 +162,19 @@ void main(List<String> argList) {
 
   final int? sourceLine =
       environment['SOURCE_LINE'] != null ? int.tryParse(environment['SOURCE_LINE']!) : null;
-  final List<Line> lines = getLinesFromInput(
-    input: input,
+  final String sourcePath = environment['SOURCE_PATH'] ?? 'unknown.dart';
+  final SnippetDartdocParser sampleParser = SnippetDartdocParser();
+  final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+    input,
     startLine: sourceLine,
     element: elementName,
+    sourceFile: File(sourcePath),
     template: template!,
-    type: getEnumName(snippetType),
+    type: sampleType,
   );
-  final SnippetDartdocParser snippetParser = SnippetDartdocParser();
-  final List<CodeSample> samples = snippetParser.parseFromComments(<List<Line>>[lines]);
-
   final SnippetGenerator generator = SnippetGenerator();
   final Map<String, Object?> metadata = <String, Object?>{
-    'sourcePath': environment['SOURCE_PATH'],
+    'sourcePath': sourcePath,
     'sourceLine': sourceLine,
     'id': id.join('.'),
     'channel': getChannelName(),

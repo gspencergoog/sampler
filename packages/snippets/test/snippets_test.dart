@@ -8,7 +8,6 @@ import 'package:path/path.dart' as path;
 
 import 'package:test/test.dart' hide TypeMatcher, isInstanceOf;
 
-import 'package:snippets/configuration.dart';
 import 'package:snippets/snippets.dart';
 
 void main() {
@@ -17,6 +16,30 @@ void main() {
     late SnippetGenerator generator;
     late Directory tmpDir;
     late File template;
+
+    void _writeSkeleton(SampleType type) {
+      switch(type) {
+        case SampleType.dartpad:
+          configuration.getHtmlSkeletonFile(SampleType.dartpad).writeAsStringSync('''
+<div>HTML Bits (DartPad-style)</div>
+<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id={{id}}&sample_channel={{channel}}"></iframe>
+<div>More HTML Bits</div>
+''');
+          break;
+        case SampleType.sample:
+        case SampleType.snippet:
+          configuration.getHtmlSkeletonFile(type).writeAsStringSync('''
+<div>HTML Bits</div>
+{{description}}
+<pre>{{code}}</pre>
+<pre>{{app}}</pre>
+<div>More HTML Bits</div>
+''');
+          break;
+        case SampleType.bare:
+          break;
+      }
+    }
 
     setUp(() {
       tmpDir = Directory.systemTemp.createTempSync('flutter_snippets_test.');
@@ -37,24 +60,7 @@ main() {
   {{code}}
 }
 ''');
-      configuration.getHtmlSkeletonFile(SampleType.sample).writeAsStringSync('''
-<div>HTML Bits</div>
-{{description}}
-<pre>{{code}}</pre>
-<pre>{{app}}</pre>
-<div>More HTML Bits</div>
-''');
-      configuration.getHtmlSkeletonFile(SampleType.snippet).writeAsStringSync('''
-<div>HTML Bits</div>
-{{description}}
-<pre>{{code}}</pre>
-<div>More HTML Bits</div>
-''');
-      configuration.getHtmlSkeletonFile(SampleType.sample, showDartPad: true).writeAsStringSync('''
-<div>HTML Bits (DartPad-style)</div>
-<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id={{id}}&sample_channel={{channel}}"></iframe>
-<div>More HTML Bits</div>
-''');
+      SampleType.values.forEach(_writeSkeleton);
       generator = SnippetGenerator(configuration: configuration);
     });
     tearDown(() {
@@ -80,17 +86,28 @@ void main() {
 ```
 ''');
       final File outputFile = File(path.join(tmpDir.absolute.path, 'snippet_out.txt'));
-
-      final String html = generator.generateCode(
+      final SnippetDartdocParser sampleParser = SnippetDartdocParser();
+      const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
+      const int sourceLine = 222;
+      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
         inputFile,
-        SampleType.sample,
+        element: 'MyElement',
         template: 'template',
-        metadata: <String, Object>{
-          'id': 'id',
-          'channel': 'stable',
-          'element': 'MyElement',
-        },
+        startLine: sourceLine,
+        sourceFile: File(sourcePath),
+        type: SampleType.sample,
+      );
+      expect(samples, isNotEmpty);
+      samples.first.metadata.addAll(<String, Object?>{
+        'channel': 'stable',
+      });
+      final String code = generator.generateCode(
+        samples.first,
         output: outputFile,
+      );
+      expect(code, contains('// Flutter code sample for MyElement'));
+      final String html = generator.generateHtml(
+        samples.first,
       );
       expect(html, contains('<div>HTML Bits</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
@@ -126,11 +143,23 @@ void main() {
 ```
 ''');
 
-      final String html = generator.generateCode(
+      final SnippetDartdocParser sampleParser = SnippetDartdocParser();
+      const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
+      const int sourceLine = 222;
+      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
         inputFile,
-        SampleType.snippet,
-        metadata: <String, Object>{'id': 'id'},
+        element: 'MyElement',
+        startLine: sourceLine,
+        sourceFile: File(sourcePath),
+        type: SampleType.snippet,
       );
+      expect(samples, isNotEmpty);
+      samples.first.metadata.addAll(<String, Object>{
+        'channel': 'stable',
+      });
+      final String code = generator.generateCode(samples.first);
+      expect(code, contains('// A description of the snippet.'));
+      final String html = generator.generateHtml(samples.first);
       expect(html, contains('<div>HTML Bits</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
       expect(html, contains(r'  print(&#39;The actual $name.&#39;);'));
@@ -154,16 +183,64 @@ void main() {
 ```
 ''');
 
-      final String html = generator.generateCode(
+      final SnippetDartdocParser sampleParser = SnippetDartdocParser();
+      const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
+      const int sourceLine = 222;
+      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
         inputFile,
-        SampleType.sample,
-        showDartPad: true,
+        element: 'MyElement',
         template: 'template',
-        metadata: <String, Object>{'id': 'id', 'channel': 'stable'},
+        startLine: sourceLine,
+        sourceFile: File(sourcePath),
+        type: SampleType.dartpad,
       );
+      expect(samples, isNotEmpty);
+      samples.first.metadata.addAll(<String, Object>{
+        'channel': 'stable',
+      });
+      final String code = generator.generateCode(samples.first);
+      expect(code, contains('// Flutter code sample for MyElement'));
+      final String html = generator.generateHtml(samples.first);
       expect(html, contains('<div>HTML Bits (DartPad-style)</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
-      expect(html, contains('<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=id&sample_channel=stable"></iframe>'));
+      expect(html, contains('<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=dartpad.packages.flutter.lib.src.widgets.foo.222&sample_channel=stable"></iframe>\n'));
+    });
+
+    test('generates bare samples', () async {
+      final File inputFile = File(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync(r'''
+A description of the bare dart example.
+
+On several lines.
+
+```dart
+void main() {
+  print('The actual $name.');
+}
+```
+
+and some following text.
+''');
+
+      final SnippetDartdocParser sampleParser = SnippetDartdocParser();
+      const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
+      const int sourceLine = 222;
+      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+        inputFile,
+        element: 'MyElement',
+        template: 'template',
+        startLine: sourceLine,
+        sourceFile: File(sourcePath),
+        type: SampleType.bare,
+      );
+      expect(samples, isNotEmpty);
+      samples.first.metadata[
+        'channel'] = 'stable';
+      final String code = generator.generateCode(samples.first);
+      expect(code, equals('\n'));
+      final String html = generator.generateHtml(samples.first);
+      expect(html, isEmpty);
     });
 
     test('generates sample metadata', () async {
@@ -174,7 +251,7 @@ A description of the snippet.
 
 On several lines.
 
-```code
+```dart
 void main() {
   print('The actual $name.');
 }
@@ -184,21 +261,28 @@ void main() {
       final File outputFile = File(path.join(tmpDir.absolute.path, 'snippet_out.dart'));
       final File expectedMetadataFile = File(path.join(tmpDir.absolute.path, 'snippet_out.json'));
 
-      generator.generateCode(
+      final SnippetDartdocParser sampleParser = SnippetDartdocParser();
+      const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
+      const int sourceLine = 222;
+      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
         inputFile,
-        SampleType.sample,
+        element: 'MyElement',
         template: 'template',
-        output: outputFile,
-        metadata: <String, Object>{'sourcePath': 'some/path.dart', 'id': 'id', 'channel': 'stable'},
+        startLine: sourceLine,
+        sourceFile: File(sourcePath),
+        type: SampleType.sample,
       );
+      expect(samples, isNotEmpty);
+      samples.first.metadata.addAll(<String, Object>{'channel': 'stable'});
+      generator.generateCode(samples.first, output: outputFile);
       expect(expectedMetadataFile.existsSync(), isTrue);
       final Map<String, dynamic> json = jsonDecode(expectedMetadataFile.readAsStringSync()) as Map<String, dynamic>;
-      expect(json['id'], equals('id'));
+      expect(json['id'], equals('sample.packages.flutter.lib.src.widgets.foo.222'));
       expect(json['channel'], equals('stable'));
       expect(json['file'], equals('snippet_out.dart'));
       expect(json['description'], equals('A description of the snippet.\n\nOn several lines.'));
       // Ensure any passed metadata is included in the output JSON too.
-      expect(json['sourcePath'], equals('some/path.dart'));
+      expect(json['sourcePath'], equals('packages/flutter/lib/src/widgets/foo.dart'));
     });
   });
 }

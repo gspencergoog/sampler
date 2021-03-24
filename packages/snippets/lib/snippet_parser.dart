@@ -32,8 +32,7 @@ class SnippetDartdocParser {
   static final RegExp _codeBlockEndRegex = RegExp(r'///\s+```\s*$');
 
   /// A RegExp that matches a Dart constructor.
-  static final RegExp _constructorRegExp =
-      RegExp(r'(const\s+)?_*[A-Z][a-zA-Z0-9<>._]*\(');
+  static final RegExp _constructorRegExp = RegExp(r'(const\s+)?_*[A-Z][a-zA-Z0-9<>._]*\(');
 
   // /// A RegExp that matches a dart version specification in an example preamble.
   // static final RegExp _dartVersionOverrideRegExp =
@@ -50,6 +49,45 @@ class SnippetDartdocParser {
     bool silent = false,
   }) {
     return parseFromComments(getFileComments(file), silent: silent, preamble: parsePreamble(file));
+  }
+
+  List<CodeSample> parseFromDartdocToolFile(
+    File input, {
+    int? startLine,
+    String? element,
+    required File sourceFile,
+    required SampleType type,
+    String template = '',
+  }) {
+    final List<Line> lines = <Line>[];
+    int lineNumber = startLine ?? 0;
+    final List<String> inputStrings = <String>[
+      // The parser wants to read the arguments from the input, so we create a new
+      // tool line to match the given arguments, so that we can use the same parser for
+      // editing and docs generation.
+      if (type != SampleType.bare) '/// {@tool ${getEnumName(type)}${template.isNotEmpty ? ' --template=$template}' : ''}}',
+      // Snippet input comes in with the comment markers stripped, so we add them
+      // back to make it conform to the source format, so we can use the same
+      // parser for editing samples as we do for processing docs.
+      ...input.readAsLinesSync().map<String>((String line) => '/// $line'),
+      if (type != SampleType.bare) '/// {@end-tool}',
+    ];
+    for (final String line in inputStrings) {
+      lines.add(
+        Line(line, element: element ?? '', line: lineNumber, file: sourceFile),
+      );
+      lineNumber++;
+    }
+    final List<CodeSample> samples = parseFromComments(<List<Line>>[lines]);
+    for (final CodeSample sample in samples) {
+      sample.metadata.addAll(<String, Object?>{
+        'id': sample.id,
+        'element': sample.start.element,
+        'sourcePath': sourceFile.path,
+        'sourceLine': sample.start.line,
+      });
+    }
+    return samples;
   }
 
   List<Line> parsePreamble(File file) {
@@ -97,12 +135,16 @@ class SnippetDartdocParser {
     int dartpadCount = 0;
     int sampleCount = 0;
     int snippetCount = 0;
+    int bareCount = 0;
 
     final List<CodeSample> samples = <CodeSample>[];
     for (final List<Line> commentLines in comments) {
       final List<CodeSample> newSamples = parseComment(commentLines);
       for (final CodeSample sample in newSamples) {
         switch (sample.type) {
+          case SampleType.bare:
+            bareCount++;
+            break;
           case SampleType.sample:
             sampleCount++;
             break;
@@ -117,15 +159,15 @@ class SnippetDartdocParser {
       }
     }
     if (!silent) {
-      print('Found $snippetCount snippet code blocks, $sampleCount '
-          'sample code sections, and $dartpadCount dartpad sections.');
+      print('Found:\n  $bareCount bare Dart blocks,\n'
+          '  $snippetCount snippet code blocks,\n'
+          '  $sampleCount non-dartpad sample code sections, and\n'
+          '  $dartpadCount dartpad sections.');
     }
     return samples;
   }
 
   List<CodeSample> parseComment(List<Line> comments) {
-    // Whether or not we're in a code sample
-    bool inSampleSection = false;
     // Whether or not we're in a snippet code sample (with template) specifically.
     bool inSnippet = false;
     // Whether or not we're in a '```dart' segment.
@@ -145,40 +187,49 @@ class SnippetDartdocParser {
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
           late SampleType snippetType;
           switch (snippetArgs.first) {
+            case 'snippet':
+              snippetType = SampleType.snippet;
+              samples.add(
+                Snippet.fromStrings(startLine, block),
+              );
+              break;
             case 'sample':
               snippetType = SampleType.sample;
+              samples.add(
+                ApplicationSample(
+                  start: startLine,
+                  input: block,
+                  args: snippetArgs,
+                  type: snippetType,
+                ),
+              );
               break;
             case 'dartpad':
               snippetType = SampleType.dartpad;
+              samples.add(
+                ApplicationSample(
+                  start: startLine,
+                  input: block,
+                  args: snippetArgs,
+                  type: snippetType,
+                ),
+              );
               break;
             default:
-              throw SnippetException(
-                  'Unknown snippet type ${snippetArgs.first}');
+              throw SnippetException('Unknown snippet type ${snippetArgs.first}');
           }
-          samples.add(
-            ApplicationSample(
-              start: startLine,
-              input: block,
-              args: snippetArgs,
-              type: snippetType,
-            ),
-          );
           snippetArgs = <String>[];
           block.clear();
           inSnippet = false;
-          inSampleSection = false;
         } else {
           block.add(line.code.replaceFirst(RegExp(r'\s*/// ?'), ''));
         }
-      } else if (inSampleSection) {
+      } else {
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
           if (inDart) {
-            throw SnippetException(
-                "Dart section didn't terminate before end of sample",
-                file: line.file?.path,
-                line: line.line);
+            throw SnippetException("Dart section didn't terminate before end of sample",
+                file: line.file?.path, line: line.line);
           }
-          inSampleSection = false;
         }
         if (inDart) {
           if (_codeBlockEndRegex.hasMatch(trimmedLine)) {
@@ -201,22 +252,20 @@ class SnippetDartdocParser {
         } else if (_codeBlockStartRegex.hasMatch(trimmedLine)) {
           assert(block.isEmpty);
           startLine = line.copyWith(
-              indent: line.code.indexOf(_dartDocPrefixWithSpace) +
-                  _dartDocPrefixWithSpace.length);
+              indent: line.code.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length);
           inDart = true;
         }
       }
-      if (!inSampleSection) {
-        final RegExpMatch? sampleMatch =
-            _dartDocSampleBeginRegex.firstMatch(trimmedLine);
-       if (sampleMatch != null) {
+      if (!inSnippet && !inDart) {
+        final RegExpMatch? sampleMatch = _dartDocSampleBeginRegex.firstMatch(trimmedLine);
+        if (sampleMatch != null) {
           inSnippet = sampleMatch != null &&
-              (sampleMatch.namedGroup('type') == 'sample' ||
-                  sampleMatch.namedGroup('type') == 'dartpad');
+              (sampleMatch.namedGroup('type') == 'snippet' ||
+               sampleMatch.namedGroup('type') == 'sample' ||
+               sampleMatch.namedGroup('type') == 'dartpad');
           if (inSnippet) {
             startLine = line.copyWith(
-              indent: line.code.indexOf(_dartDocPrefixWithSpace) +
-                  _dartDocPrefixWithSpace.length,
+              indent: line.code.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length,
             );
             if (sampleMatch.namedGroup('args') != null) {
               // There are arguments to the snippet tool to keep track of.
@@ -230,14 +279,6 @@ class SnippetDartdocParser {
               ];
             }
           }
-          inSampleSection = !inSnippet;
-        } else if (RegExp(r'///\s*#+\s+[Ss]ample\s+[Cc]ode:?$')
-            .hasMatch(trimmedLine)) {
-          throw SnippetException(
-            "Found deprecated '## Sample code' section: use {@tool snippet}...{@end-tool} instead.",
-            file: line.file?.path,
-            line: line.line,
-          );
         }
       }
     }
@@ -292,36 +333,28 @@ class SnippetDartdocParser {
   /// Splits any sections denoted by "// ..." into separate blocks to be
   /// processed separately. Uses a primitive heuristic to make sample blocks
   /// into valid Dart code.
-  Snippet _processBlock(Line line, List<String> block) {
+  BareDartSample _processBlock(Line line, List<String> block) {
     if (block.isEmpty) {
       throw SnippetException('$line: Empty ```dart block in sample code.');
     }
-    if (block.first.startsWith('new ') ||
-        block.first.startsWith(_constructorRegExp)) {
+    if (block.first.startsWith('new ') || block.first.startsWith(_constructorRegExp)) {
       _expressionId += 1;
-      return Snippet.surround(
-          line, 'dynamic expression$_expressionId = ', block.toList(), ';');
+      return BareDartSample.surround(line, 'dynamic expression$_expressionId = ', block.toList(), ';');
     } else if (block.first.startsWith('await ')) {
       _expressionId += 1;
-      return Snippet.surround(
-          line,
-          'Future<void> expression$_expressionId() async { ',
-          block.toList(),
-          ' }');
-    } else if (block.first.startsWith('class ') ||
-        block.first.startsWith('enum ')) {
-      return Snippet.fromStrings(line, block.toList());
-    } else if ((block.first.startsWith('_') ||
-            block.first.startsWith('final ')) &&
+      return BareDartSample.surround(
+          line, 'Future<void> expression$_expressionId() async { ', block.toList(), ' }');
+    } else if (block.first.startsWith('class ') || block.first.startsWith('enum ')) {
+      return BareDartSample.fromStrings(line, block.toList());
+    } else if ((block.first.startsWith('_') || block.first.startsWith('final ')) &&
         block.first.contains(' = ')) {
       _expressionId += 1;
-      return Snippet.surround(
-          line, 'void expression$_expressionId() { ', block.toList(), ' }');
+      return BareDartSample.surround(line, 'void expression$_expressionId() { ', block.toList(), ' }');
     } else {
       final List<String> buffer = <String>[];
       int blocks = 0;
       Line? subLine;
-      final List<Snippet> subsections = <Snippet>[];
+      final List<BareDartSample> subsections = <BareDartSample>[];
       int startPos = line.startChar;
       for (int index = 0; index < block.length; index += 1) {
         // Each section of the dart code that is either split by a blank line, or with
@@ -355,9 +388,9 @@ class SnippetDartdocParser {
           subsections.add(_processBlock(subLine, buffer));
         }
         // Combine all of the subsections into one section, now that they've been processed.
-        return Snippet.combine(subsections);
+        return BareDartSample.combine(subsections);
       } else {
-        return Snippet.fromStrings(line, block.toList());
+        return BareDartSample.fromStrings(line, block.toList());
       }
     }
   }
