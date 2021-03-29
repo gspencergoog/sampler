@@ -9,7 +9,7 @@ import 'package:path/path.dart' as path;
 /// A class to represent a line of input code.
 class Line {
   const Line(
-    this.code, {
+    this.text, {
     this.file,
     this.element,
     this.line = -1,
@@ -23,18 +23,18 @@ class Line {
   final int startChar;
   final int endChar;
   final int indent;
-  final String code;
+  final String text;
 
   String toStringWithColumn(int column) {
     if (column != null && indent != null) {
-      return '$file:$line:${column + indent}: $code';
+      return '$file:$line:${column + indent}: $text';
     }
     return toString();
   }
 
   Line copyWith({
     String? element,
-    String? code,
+    String? text,
     File? file,
     int? line,
     int? startChar,
@@ -42,7 +42,7 @@ class Line {
     int? indent,
   }) {
     return Line(
-      code ?? this.code,
+      text ?? this.text,
       element: element ?? this.element,
       file: file ?? this.file,
       line: line ?? this.line,
@@ -52,8 +52,10 @@ class Line {
     );
   }
 
+  bool get hasFile => file != null;
+
   @override
-  String toString() => '$file:${line == -1 ? '??' : line}: $code';
+  String toString() => '$file:${line == -1 ? '??' : line}: $text';
 }
 
 /// A class containing the name and contents associated with a code block inside if a
@@ -61,9 +63,10 @@ class Line {
 class TemplateInjection {
   TemplateInjection(this.name, this.contents, {this.language = ''});
   final String name;
-  final List<String> contents;
+  final List<Line> contents;
   final String language;
-  String get mergedContent => contents.join('\n').trim();
+  Iterable<String> get stringContents => contents.map<String>((Line line) => line.text);
+  String get mergedContent => stringContents.join('\n').trim();
 }
 
 /// A base class to represent a block of any kind of sample code, marked by
@@ -108,7 +111,7 @@ abstract class CodeSample {
     for (final Line line in input) {
       buf.writeln(
         ' [${line.startChar == -1 ? '??' : line.startChar}] '
-        '${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.code} '
+        '${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.text} '
         ' -- ${line.element}',
       );
     }
@@ -142,7 +145,7 @@ class SnippetSample extends CodeSample {
     for (int i = 0; i < code.length; ++i) {
       codeLines.add(
         firstLine.copyWith(
-          code: code[i],
+          text: code[i],
           line: firstLine.line + i,
           startChar: startPos,
         ),
@@ -191,7 +194,7 @@ class ApplicationSample extends CodeSample {
     return input.map<Line>(
       (String line) {
         final Line result = start.copyWith(
-          code: line,
+          text: line,
           line: lineNumber,
           startChar: startChar,
         );

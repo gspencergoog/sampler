@@ -30,4 +30,7 @@ void main(List<String> argList) {
     print('${sample.id}: $sample');
     print('Generated:\n${generator.generateCode(sample)}');
   }
+
+  final Iterable<Line> consolidated = generator.consolidateSnippets(samples);
+  print('Consolidated:\n${consolidated.map<String>((Line line) => line.text).join('\n')}');
 }

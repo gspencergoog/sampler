@@ -113,6 +113,7 @@ class SnippetDartdocParser {
           startChar: charPosition,
           endChar: charPosition + line.length + 1,
           element: '#preamble',
+          file: file,
           line: lineNumber,
         ));
       }
@@ -169,7 +170,7 @@ class SnippetDartdocParser {
     final List<CodeSample> samples = <CodeSample>[];
 
     for (final Line line in comments) {
-      final String trimmedLine = line.code.trim();
+      final String trimmedLine = line.text.trim();
       if (inSnippet) {
         if (!trimmedLine.startsWith(_dartDocPrefix)) {
           throw SnippetException('Snippet section unterminated.',
@@ -207,7 +208,7 @@ class SnippetDartdocParser {
           block.clear();
           inSnippet = false;
         } else {
-          block.add(line.code.replaceFirst(RegExp(r'\s*/// ?'), ''));
+          block.add(line.text.replaceFirst(RegExp(r'\s*/// ?'), ''));
         }
       } else {
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
@@ -223,7 +224,7 @@ class SnippetDartdocParser {
           } else if (trimmedLine == _dartDocPrefix) {
             block.add('');
           } else {
-            final int index = line.code.indexOf(_dartDocPrefixWithSpace);
+            final int index = line.text.indexOf(_dartDocPrefixWithSpace);
             if (index < 0) {
               throw SnippetException(
                 'Dart section inexplicably did not contain "$_dartDocPrefixWithSpace" prefix.',
@@ -231,12 +232,12 @@ class SnippetDartdocParser {
                 line: line.line,
               );
             }
-            block.add(line.code.substring(index + 4));
+            block.add(line.text.substring(index + 4));
           }
         } else if (_codeBlockStartRegex.hasMatch(trimmedLine)) {
           assert(block.isEmpty);
           startLine = line.copyWith(
-              indent: line.code.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length);
+              indent: line.text.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length);
           inDart = true;
         }
       }
@@ -249,7 +250,7 @@ class SnippetDartdocParser {
                sampleMatch.namedGroup('type') == 'dartpad');
           if (inSnippet) {
             startLine = line.copyWith(
-              indent: line.code.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length,
+              indent: line.text.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length,
             );
             if (sampleMatch.namedGroup('args') != null) {
               // There are arguments to the snippet tool to keep track of.
@@ -289,15 +290,16 @@ class SnippetDartdocParser {
     // Match group 2 (quote) contains the quote character used (which is discarded).
     // Match group 3 (value) is a quoted arg, if any, without the quotes.
     // Match group 4 (unquoted) is the unquoted arg, if any.
-    final RegExp argMatcher = RegExp(r'(?<option>[a-zA-Z\-_0-9]+=)?' // option name
+    final RegExp argMatcher = RegExp(r'(?<option>[-_a-zA-Z0-9]+=)?' // option name
         r'(?:' // Start a new non-capture group for the two possibilities.
-        r'''(?<quote>["'])(?<value>(?:\\{2})*|(?:.*?[^\\](?:\\{2})*))\2|''' // with quotes.
+        r'''(?<quote>["'])(?<value>(?:\\{2})*|(?:.*?[^\\](?:\\{2})*))\2|''' // value with quotes.
         r'(?<unquoted>[^ ]+))'); // without quotes.
     final Iterable<RegExpMatch> matches = argMatcher.allMatches(argsAsString);
 
-    // Remove quotes around args, and if convertToArgs is true, then for any
-    // args that look like assignments (start with valid option names followed
-    // by an equals sign), add a "--" in front so that they parse as options.
+    // Remove quotes around args, then for any args that look like assignments
+    // (start with valid option names followed by an equals sign), add a "--" in
+    // front so that they parse as options to support legacy dartdoc
+    // functionality of "option=value".
     return matches.map<String>((RegExpMatch match) {
       String option = '';
       if (match.namedGroup('option') != null && !match.namedGroup('option')!.startsWith('-')) {
@@ -305,7 +307,7 @@ class SnippetDartdocParser {
       }
       if (match.namedGroup('quote') != null) {
         // This arg has quotes, so strip them.
-        return '$option${match.namedGroup('quote') ?? ''}'
+        return '$option'
             '${match.namedGroup('value') ?? ''}'
             '${match.namedGroup('unquoted') ?? ''}';
       }
