@@ -17,17 +17,17 @@ void main() {
     late Directory tmpDir;
     late File template;
 
-    void _writeSkeleton(SampleType type) {
+    void _writeSkeleton(String type) {
       switch(type) {
-        case SampleType.dartpad:
-          configuration.getHtmlSkeletonFile(SampleType.dartpad).writeAsStringSync('''
+        case 'dartpad':
+          configuration.getHtmlSkeletonFile('dartpad').writeAsStringSync('''
 <div>HTML Bits (DartPad-style)</div>
 <iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id={{id}}&sample_channel={{channel}}"></iframe>
 <div>More HTML Bits</div>
 ''');
           break;
-        case SampleType.sample:
-        case SampleType.snippet:
+        case 'sample':
+        case 'snippet':
           configuration.getHtmlSkeletonFile(type).writeAsStringSync('''
 <div>HTML Bits</div>
 {{description}}
@@ -58,7 +58,7 @@ main() {
   {{code}}
 }
 ''');
-      SampleType.values.forEach(_writeSkeleton);
+      <String>['dartpad', 'sample', 'snippet'].forEach(_writeSkeleton);
       generator = SnippetGenerator(configuration: configuration);
     });
     tearDown(() {
@@ -93,7 +93,7 @@ void main() {
         template: 'template',
         startLine: sourceLine,
         sourceFile: File(sourcePath),
-        type: SampleType.sample,
+        type: 'sample',
       );
       expect(samples, isNotEmpty);
       samples.first.metadata.addAll(<String, Object?>{
@@ -149,7 +149,7 @@ void main() {
         element: 'MyElement',
         startLine: sourceLine,
         sourceFile: File(sourcePath),
-        type: SampleType.snippet,
+        type: 'snippet',
       );
       expect(samples, isNotEmpty);
       samples.first.metadata.addAll(<String, Object>{
@@ -190,7 +190,7 @@ void main() {
         template: 'template',
         startLine: sourceLine,
         sourceFile: File(sourcePath),
-        type: SampleType.dartpad,
+        type: 'dartpad',
       );
       expect(samples, isNotEmpty);
       samples.first.metadata.addAll(<String, Object>{
@@ -231,7 +231,7 @@ void main() {
         template: 'template',
         startLine: sourceLine,
         sourceFile: File(sourcePath),
-        type: SampleType.sample,
+        type: 'sample',
       );
       expect(samples, isNotEmpty);
       samples.first.metadata.addAll(<String, Object>{'channel': 'stable'});

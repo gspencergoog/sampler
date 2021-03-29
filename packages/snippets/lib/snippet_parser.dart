@@ -40,7 +40,7 @@ class SnippetDartdocParser {
     final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
     final List<Line> preamble = parsePreamble(file);
     if (preamble.isNotEmpty) {
-      samples.add(Snippet(preamble));
+      samples.add(SnippetSample(preamble));
     }
     return samples;
   }
@@ -50,8 +50,8 @@ class SnippetDartdocParser {
     int? startLine,
     String? element,
     required File sourceFile,
-    required SampleType type,
     String template = '',
+    String type = '',
   }) {
     final List<Line> lines = <Line>[];
     int lineNumber = startLine ?? 0;
@@ -59,7 +59,7 @@ class SnippetDartdocParser {
       // The parser wants to read the arguments from the input, so we create a new
       // tool line to match the given arguments, so that we can use the same parser for
       // editing and docs generation.
-      '/// {@tool ${getEnumName(type)}${template.isNotEmpty ? ' --template=$template}' : ''}}',
+      '/// {@tool $type ${template.isNotEmpty ? ' --template=$template}' : ''}}',
       // Snippet input comes in with the comment markers stripped, so we add them
       // back to make it conform to the source format, so we can use the same
       // parser for editing samples as we do for processing docs.
@@ -134,14 +134,14 @@ class SnippetDartdocParser {
     for (final List<Line> commentLines in comments) {
       final List<CodeSample> newSamples = parseComment(commentLines);
       for (final CodeSample sample in newSamples) {
-        switch (sample.type) {
-          case SampleType.sample:
+        switch (sample.runtimeType) {
+          case ApplicationSample:
             sampleCount++;
             break;
-          case SampleType.dartpad:
+          case DartpadSample:
             dartpadCount++;
             break;
-          case SampleType.snippet:
+          case SnippetSample:
             snippetCount++;
             break;
         }
@@ -176,33 +176,27 @@ class SnippetDartdocParser {
               file: line.file?.path, line: line.line);
         }
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
-          late SampleType snippetType;
           switch (snippetArgs.first) {
             case 'snippet':
-              snippetType = SampleType.snippet;
               samples.add(
-                Snippet.fromStrings(startLine, block),
+                SnippetSample.fromStrings(startLine, block),
               );
               break;
             case 'sample':
-              snippetType = SampleType.sample;
               samples.add(
                 ApplicationSample(
                   start: startLine,
                   input: block,
                   args: snippetArgs,
-                  type: snippetType,
                 ),
               );
               break;
             case 'dartpad':
-              snippetType = SampleType.dartpad;
               samples.add(
-                ApplicationSample(
+                DartpadSample(
                   start: startLine,
                   input: block,
                   args: snippetArgs,
-                  type: snippetType,
                 ),
               );
               break;

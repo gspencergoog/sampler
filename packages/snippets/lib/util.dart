@@ -6,20 +6,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:process/process.dart' show ProcessManager, LocalProcessManager;
 
-/// Defines the different types of snippets.
-enum SampleType {
-  /// A snippet that includes the code interpolated into an application
-  /// template.
-  sample,
-
-  /// A snippet that includes the code interpolated into an application
-  /// template, and meant to run under Dartpad.
-  dartpad,
-
-  /// Produces a nicely formatted sample code, but no application.
-  snippet,
-}
-
 class SnippetException implements Exception {
   SnippetException(this.message, {this.file, this.line});
   final String message;
@@ -67,9 +53,3 @@ void errorExit(String message) {
   exit(1);
 }
 
-/// Return the name of an enum item.
-String getEnumName(dynamic enumItem) {
-  final String name = enumItem.toString();
-  final int index = name.indexOf('.');
-  return index == -1 ? name : name.substring(index + 1);
-}

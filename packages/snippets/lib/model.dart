@@ -5,7 +5,6 @@
 import 'dart:io';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
-import 'package:snippets/util.dart';
 
 /// A class to represent a line of input code.
 class Line {
@@ -71,14 +70,12 @@ class TemplateInjection {
 /// "{@tool (snippet|sample|dartdoc) ...}...{@end-tool}".
 abstract class CodeSample {
   CodeSample(
-    this.type,
     this.args,
     this.input,
   )   : assert(input.isNotEmpty),
         assert(args.isNotEmpty),
         id = _createNameFromSource(args.first, input.first);
 
-  final SampleType type;
   final List<String> args;
   final String id;
   final List<Line> input;
@@ -90,9 +87,6 @@ abstract class CodeSample {
   Line get start => input.first;
 
   String get template {
-    if (type == SampleType.snippet) {
-      return '';
-    }
     final ArgParser parser = ArgParser();
     parser.addOption('template', defaultsTo: '');
     final ArgResults parsedArgs = parser.parse(args);
@@ -120,26 +114,29 @@ abstract class CodeSample {
     }
     return buf.toString();
   }
+
+  String get type;
 }
 
 /// A class to represent a snippet of sample code, marked by "{@tool
 /// snippet}...{@end-tool}".
 ///
 /// This is code that is not meant to be run as a complete application, but
-/// rather as a code usage example. One [Snippet] contains all of the "snippet"
+/// rather as a code usage example. One [SnippetSample] contains all of the "snippet"
 /// blocks for an entire file, since they are evaluated in the analysis tool in
 /// a single block.
-class Snippet extends CodeSample {
-  Snippet(List<Line> input)
-      : super(SampleType.snippet, <String>['snippet'], input);
+class SnippetSample extends CodeSample {
+  SnippetSample(List<Line> input)
+      : super(<String>['snippet'], input);
 
-  factory Snippet.combine(List<Snippet> sections) {
+  factory SnippetSample.combine(List<SnippetSample> sections) {
     final List<Line> code =
-    sections.expand((Snippet section) => section.input).toList();
-    return Snippet(code);
+    sections.expand((SnippetSample section) => section.input).toList();
+    return SnippetSample(code);
   }
 
-  factory Snippet.fromStrings(Line firstLine, List<String> code) {
+
+  factory SnippetSample.fromStrings(Line firstLine, List<String> code) {
     final List<Line> codeLines = <Line>[];
     int startPos = firstLine.startChar;
     for (int i = 0; i < code.length; ++i) {
@@ -152,11 +149,11 @@ class Snippet extends CodeSample {
       );
       startPos += code[i].length + 1;
     }
-    return Snippet(codeLines);
+    return SnippetSample(codeLines);
   }
 
-  factory Snippet.surround(String prefix, List<Line> code, String postfix) {
-    return Snippet(<Line>[
+  factory SnippetSample.surround(String prefix, List<Line> code, String postfix) {
+    return SnippetSample(<Line>[
       if (prefix.isNotEmpty) Line(prefix),
       ...code,
       if (postfix.isNotEmpty) Line(postfix),
@@ -164,24 +161,29 @@ class Snippet extends CodeSample {
   }
 
   @override
+  String get template => '';
+
+  @override
   Line get start => input.firstWhere((Line line) => line.file != null);
+
+  @override
+  String get type => 'snippet';
 }
 
-/// A class to represent an application sample in the dartdoc comments, marked
-/// by `{@tool (sample|dartdoc) ...}...{@end-tool}`.
+/// A class to represent a plain application sample in the dartdoc comments,
+/// marked by `{@tool sample ...}...{@end-tool}`.
 ///
 /// Application samples are processed separately from non-application snippets,
 /// because they must be injected into templates in order to be analyzed. Each
-/// [ApplicationSample] represents one `{@tool (sample|dartdoc)
-/// ...}...{@end-tool}` block in the source file.
+/// [ApplicationSample] represents one `{@tool sample ...}...{@end-tool}` block
+/// in the source file.
 class ApplicationSample extends CodeSample {
   ApplicationSample({
     Line start = const Line(''),
     List<String> input = const <String>[],
     required List<String> args,
-    SampleType type = SampleType.sample,
   })  : assert(args.isNotEmpty),
-        super(type, args, _convertInput(input, start));
+        super(args, _convertInput(input, start));
 
   static List<Line> _convertInput(List<String> input, Line start) {
     int lineNumber = start.line;
@@ -199,4 +201,27 @@ class ApplicationSample extends CodeSample {
       },
     ).toList();
   }
+
+  @override
+  String get type => 'sample';
+}
+
+/// A class to represent a Dartpad application sample in the dartdoc comments,
+/// marked by `{@tool dartpad ...}...{@end-tool}`.
+///
+/// Dartpad samples are processed separately from non-application snippets,
+/// because they must be injected into templates in order to be analyzed. Each
+/// [DartpadSample] represents one `{@tool dartpad ...}...{@end-tool}` block in
+/// the source file.
+class DartpadSample extends ApplicationSample {
+  DartpadSample({
+    Line start = const Line(''),
+    List<String> input = const <String>[],
+    required List<String> args,
+  })  : assert(args.isNotEmpty),
+        super(start: start, input: input, args: args);
+
+
+  @override
+  String get type => 'dartpad';
 }

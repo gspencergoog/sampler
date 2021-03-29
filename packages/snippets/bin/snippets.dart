@@ -30,25 +30,27 @@ String getChannelName() {
       : gitBranchMatch.namedGroup('branch')!.split('...').first;
 }
 
+const List<String> sampleTypes = <String>[
+  'snippet', 'sample', 'dartpad',
+];
+
 /// Generates snippet dartdoc output for a given input, and creates any sample
 /// applications needed by the snippet.
 void main(List<String> argList) {
   final Map<String, String> environment = Platform.environment;
   final ArgParser parser = ArgParser();
-  final List<String> snippetTypes =
-      SampleType.values.map<String>((SampleType type) => getEnumName(type)).toList();
   parser.addOption(
     _kTypeOption,
-    defaultsTo: getEnumName(SampleType.dartpad),
-    allowed: snippetTypes,
+    defaultsTo: 'dartpad',
+    allowed: sampleTypes,
     allowedHelp: <String, String>{
-      getEnumName(SampleType.dartpad):
+      'dartpad':
+          'Produce a code sample application complete with embedding the sample in an '
+              'application template for using in Dartpad.',
+      'sample':
           'Produce a code sample application complete with embedding the sample in an '
               'application template.',
-      getEnumName(SampleType.sample):
-          'Produce a code sample application complete with embedding the sample in an '
-              'application template.',
-      getEnumName(SampleType.snippet):
+      'snippet':
           'Produce a nicely formatted piece of sample code. Does not embed the '
               'sample into an application template.',
     },
@@ -106,8 +108,7 @@ void main(List<String> argList) {
     exit(0);
   }
 
-  final SampleType sampleType =
-      SampleType.values.firstWhere((SampleType type) => getEnumName(type) == args[_kTypeOption]);
+  final String sampleType = args[_kTypeOption] as String;
 
   if (args[_kInputOption] == null) {
     stderr.writeln(parser.usage);
@@ -121,7 +122,7 @@ void main(List<String> argList) {
   }
 
   String? template;
-  if (sampleType == SampleType.sample || sampleType == SampleType.dartpad) {
+  if (sampleType == 'sample' || sampleType == 'dartpad') {
     final String templateArg = args[_kTemplateOption] as String;
     if (templateArg == null || templateArg.isEmpty) {
       stderr.writeln(parser.usage);

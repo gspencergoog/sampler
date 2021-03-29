@@ -5,7 +5,6 @@
 import 'dart:io' hide Platform;
 
 import 'package:path/path.dart' as path;
-import 'util.dart';
 
 // Represents the locations of all of the data for snippets.
 class SnippetConfiguration {
@@ -42,9 +41,9 @@ class SnippetConfiguration {
 
   /// Gets the skeleton file to use for the given [SampleType] and DartPad
   /// preference.
-  File getHtmlSkeletonFile(SampleType type) {
+  File getHtmlSkeletonFile(String type) {
     final String filename =
-        type == SampleType.dartpad ? 'dartpad-sample.html' : '${getEnumName(type)}.html';
+        type == 'dartpad' ? 'dartpad-sample.html' : '$type.html';
     return File(path.join(skeletonsDirectory.path, filename));
   }
 }

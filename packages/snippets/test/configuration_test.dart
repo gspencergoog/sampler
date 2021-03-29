@@ -33,19 +33,19 @@ void main() {
     });
     test('html skeleton file for sample is correct', () async {
       expect(
-          config.getHtmlSkeletonFile(SampleType.snippet).path,
+          config.getHtmlSkeletonFile('snippet').path,
           matches(RegExp(
               r'[/\\]flutter sdk[/\\]dev[/\\]snippets[/\\]config[/\\]skeletons[/\\]snippet.html')));
     });
     test('html skeleton file for app with no dartpad is correct', () async {
       expect(
-          config.getHtmlSkeletonFile(SampleType.sample).path,
+          config.getHtmlSkeletonFile('sample').path,
           matches(RegExp(
               r'[/\\]flutter sdk[/\\]dev[/\\]snippets[/\\]config[/\\]skeletons[/\\]sample.html')));
     });
     test('html skeleton file for app with dartpad is correct', () async {
       expect(
-          config.getHtmlSkeletonFile(SampleType.dartpad).path,
+          config.getHtmlSkeletonFile('dartpad').path,
           matches(RegExp(
               r'[/\\]flutter sdk[/\\]dev[/\\]snippets[/\\]config[/\\]skeletons[/\\]dartpad-sample.html')));
     });

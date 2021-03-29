@@ -95,7 +95,7 @@ class SnippetGenerator {
   /// Takes into account the [type] and doesn't substitute in the id and the app
   /// if not a [SnippetType.sample] snippet.
   String interpolateSkeleton(
-    SampleType type,
+    String type,
     List<TemplateInjection> injections,
     String skeleton,
     Map<String, Object?> metadata,
@@ -141,7 +141,7 @@ class SnippetGenerator {
       'element': metadata['element'] as String? ?? '',
       'app': '',
     };
-    if (type == SampleType.sample) {
+    if (type == 'sample') {
       substitutions
         ..['serial'] = metadata['serial']?.toString() ?? '0'
         ..['app'] = htmlEscape.convert(
@@ -161,11 +161,11 @@ class SnippetGenerator {
     final List<Line> snippetLines = <Line>[
       ...preambles.expand((CodeSample sample) => sample.input)
     ];
-    final Iterable<Snippet> snippets = samples.whereType<Snippet>();
-    for (Snippet snippet in snippets) {
+    final Iterable<SnippetSample> snippets = samples.whereType<SnippetSample>();
+    for (SnippetSample snippet in snippets) {
       snippet = _processBlock(snippet);
     }
-    final List<TemplateInjection> injections = parseInput(Snippet(snippetLines));
+    final List<TemplateInjection> injections = parseInput(SnippetSample(snippetLines));
     return injections.expand<String>((TemplateInjection injection) => injection.contents);
   }
 
@@ -180,7 +180,7 @@ class SnippetGenerator {
   /// Splits any sections denoted by "// ..." into separate blocks to be
   /// processed separately. Uses a primitive heuristic to make sample blocks
   /// into valid Dart code.
-  Snippet _processBlock(Snippet snippet) {
+  SnippetSample _processBlock(SnippetSample snippet) {
     final List<Line> block = snippet.input.toList();
     if (block.isEmpty) {
       throw SnippetException('${snippet.start}: Empty ```dart block in sample code.');
@@ -188,22 +188,22 @@ class SnippetGenerator {
     final String firstLine = block.first.code;
     if (firstLine.startsWith('new ') || firstLine.startsWith(_constructorRegExp)) {
       _expressionId += 1;
-      return Snippet.surround('dynamic expression$_expressionId = ', block.toList(), ';');
+      return SnippetSample.surround('dynamic expression$_expressionId = ', block.toList(), ';');
     } else if (firstLine.startsWith('await ')) {
       _expressionId += 1;
-      return Snippet.surround(
+      return SnippetSample.surround(
           'Future<void> expression$_expressionId() async { ', block.toList(), ' }');
     } else if (block.first.code.startsWith('class ') || block.first.code.startsWith('enum ')) {
-      return Snippet(block);
+      return SnippetSample(block);
     } else if ((block.first.code.startsWith('_') || block.first.code.startsWith('final ')) &&
         block.first.code.contains(' = ')) {
       _expressionId += 1;
-      return Snippet.surround('void expression$_expressionId() { ', block.toList(), ' }');
+      return SnippetSample.surround('void expression$_expressionId() { ', block.toList(), ' }');
     } else {
       final List<Line> buffer = <Line>[];
       int blocks = 0;
       Line? subLine;
-      final List<Snippet> subsections = <Snippet>[];
+      final List<SnippetSample> subsections = <SnippetSample>[];
       for (int index = 0; index < block.length; index += 1) {
         // Each section of the dart code that is either split by a blank line, or with
         // '// ...' is treated as a separate code block.
@@ -213,7 +213,7 @@ class SnippetGenerator {
                 '${Line('', file: block.first.file, line: block.first.line + index, indent: block.first.indent)}: '
                     'Unexpected blank line or "// ..." line near start of block in sample code.');
           blocks += 1;
-          subsections.add(_processBlock(Snippet(buffer)));
+          subsections.add(_processBlock(SnippetSample(buffer)));
           buffer.clear();
           assert(buffer.isEmpty);
           subLine = null;
@@ -228,12 +228,12 @@ class SnippetGenerator {
       }
       if (blocks > 0) {
         if (subLine != null) {
-          subsections.add(_processBlock(Snippet(buffer)));
+          subsections.add(_processBlock(SnippetSample(buffer)));
         }
         // Combine all of the subsections into one section, now that they've been processed.
-        return Snippet.combine(subsections);
+        return SnippetSample.combine(subsections);
       } else {
-        return Snippet(block);
+        return SnippetSample(block);
       }
     }
   }
@@ -326,9 +326,9 @@ class SnippetGenerator {
     configuration.createOutputDirectoryIfNeeded();
 
     final List<TemplateInjection> snippetData = parseInput(sample);
-    switch (sample.type) {
-      case SampleType.dartpad:
-      case SampleType.sample:
+    switch (sample.runtimeType) {
+      case DartpadSample:
+      case ApplicationSample:
         final Directory templatesDir = configuration.templatesDirectory;
         if (templatesDir == null) {
           stderr.writeln('Unable to find the templates directory.');
@@ -358,7 +358,7 @@ class SnippetGenerator {
             descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
         sample.description = descriptionString;
         break;
-      case SampleType.snippet:
+      case SnippetSample:
         const String templateContents = '{{code}}';
         final String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
         snippetData.add(TemplateInjection('app', app.split('\n')));
