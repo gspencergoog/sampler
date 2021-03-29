@@ -36,8 +36,6 @@ void main() {
 <div>More HTML Bits</div>
 ''');
           break;
-        case SampleType.bare:
-          break;
       }
     }
 
@@ -206,43 +204,6 @@ void main() {
       expect(html, contains('<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=dartpad.packages.flutter.lib.src.widgets.foo.222&sample_channel=stable"></iframe>\n'));
     });
 
-    test('generates bare samples', () async {
-      final File inputFile = File(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync(r'''
-A description of the bare dart example.
-
-On several lines.
-
-```dart
-void main() {
-  print('The actual $name.');
-}
-```
-
-and some following text.
-''');
-
-      final SnippetDartdocParser sampleParser = SnippetDartdocParser();
-      const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
-      const int sourceLine = 222;
-      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
-        inputFile,
-        element: 'MyElement',
-        template: 'template',
-        startLine: sourceLine,
-        sourceFile: File(sourcePath),
-        type: SampleType.bare,
-      );
-      expect(samples, isNotEmpty);
-      samples.first.metadata[
-        'channel'] = 'stable';
-      final String code = generator.generateCode(samples.first);
-      expect(code, equals('\n'));
-      final String html = generator.generateHtml(samples.first);
-      expect(html, isEmpty);
-    });
-
     test('generates sample metadata', () async {
       final File inputFile = File(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
         ..createSync(recursive: true)
@@ -281,7 +242,6 @@ void main() {
       expect(json['channel'], equals('stable'));
       expect(json['file'], equals('snippet_out.dart'));
       expect(json['description'], equals('A description of the snippet.\n\nOn several lines.'));
-      // Ensure any passed metadata is included in the output JSON too.
       expect(json['sourcePath'], equals('packages/flutter/lib/src/widgets/foo.dart'));
     });
   });

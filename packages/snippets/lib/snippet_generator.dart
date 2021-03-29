@@ -153,6 +153,91 @@ class SnippetGenerator {
     });
   }
 
+  /// Consolidates all of the snippets and the preamble into one snippet, in
+  /// order to create a compilable result.
+  Iterable<String> consolidateSnippets(List<CodeSample> samples) {
+    final List<CodeSample> preambles = samples.where((CodeSample sample) => sample.start.element == '#preamble').toList();
+    assert(preambles.length < 2);
+    final List<Line> snippetLines = <Line>[
+      ...preambles.expand((CodeSample sample) => sample.input)
+    ];
+    final Iterable<Snippet> snippets = samples.whereType<Snippet>();
+    for (Snippet snippet in snippets) {
+      snippet = _processBlock(snippet);
+    }
+    final List<TemplateInjection> injections = parseInput(Snippet(snippetLines));
+    return injections.expand<String>((TemplateInjection injection) => injection.contents);
+  }
+
+  /// A RegExp that matches a Dart constructor.
+  static final RegExp _constructorRegExp = RegExp(r'(const\s+)?_*[A-Z][a-zA-Z0-9<>._]*\(');
+
+  /// A serial number so that we can create unique expression names when we
+  /// generate them.
+  int _expressionId = 0;
+
+  /// Process one block of sample code (the part inside of "```" markers).
+  /// Splits any sections denoted by "// ..." into separate blocks to be
+  /// processed separately. Uses a primitive heuristic to make sample blocks
+  /// into valid Dart code.
+  Snippet _processBlock(Snippet snippet) {
+    final List<Line> block = snippet.input.toList();
+    if (block.isEmpty) {
+      throw SnippetException('${snippet.start}: Empty ```dart block in sample code.');
+    }
+    final String firstLine = block.first.code;
+    if (firstLine.startsWith('new ') || firstLine.startsWith(_constructorRegExp)) {
+      _expressionId += 1;
+      return Snippet.surround('dynamic expression$_expressionId = ', block.toList(), ';');
+    } else if (firstLine.startsWith('await ')) {
+      _expressionId += 1;
+      return Snippet.surround(
+          'Future<void> expression$_expressionId() async { ', block.toList(), ' }');
+    } else if (block.first.code.startsWith('class ') || block.first.code.startsWith('enum ')) {
+      return Snippet(block);
+    } else if ((block.first.code.startsWith('_') || block.first.code.startsWith('final ')) &&
+        block.first.code.contains(' = ')) {
+      _expressionId += 1;
+      return Snippet.surround('void expression$_expressionId() { ', block.toList(), ' }');
+    } else {
+      final List<Line> buffer = <Line>[];
+      int blocks = 0;
+      Line? subLine;
+      final List<Snippet> subsections = <Snippet>[];
+      for (int index = 0; index < block.length; index += 1) {
+        // Each section of the dart code that is either split by a blank line, or with
+        // '// ...' is treated as a separate code block.
+        if (block[index].code.trim().isEmpty || block[index].code == '// ...') {
+          if (subLine == null)
+            throw SnippetException(
+                '${Line('', file: block.first.file, line: block.first.line + index, indent: block.first.indent)}: '
+                    'Unexpected blank line or "// ..." line near start of block in sample code.');
+          blocks += 1;
+          subsections.add(_processBlock(Snippet(buffer)));
+          buffer.clear();
+          assert(buffer.isEmpty);
+          subLine = null;
+        } else if (block[index].code.startsWith('// ')) {
+          if (buffer.length > 1) // don't include leading comments
+            buffer.add(
+                Line('/${block[index].code}')); // so that it doesn't start with "// " and get caught in this again
+        } else {
+          subLine ??= block[index];
+          buffer.add(block[index]);
+        }
+      }
+      if (blocks > 0) {
+        if (subLine != null) {
+          subsections.add(_processBlock(Snippet(buffer)));
+        }
+        // Combine all of the subsections into one section, now that they've been processed.
+        return Snippet.combine(subsections);
+      } else {
+        return Snippet(block);
+      }
+    }
+  }
+
   /// Parses the input for the various code and description segments, and
   /// returns them in the order found.
   List<TemplateInjection> parseInput(CodeSample sample) {
@@ -209,9 +294,6 @@ class SnippetGenerator {
   }
 
   String generateHtml(CodeSample sample) {
-    if (sample.type == SampleType.bare) {
-      return '';
-    }
     final String skeleton =
     _loadFileAsUtf8(configuration.getHtmlSkeletonFile(sample.type));
     return interpolateSkeleton(sample.type, sample.parts, skeleton, sample.metadata);
@@ -277,15 +359,8 @@ class SnippetGenerator {
         sample.description = descriptionString;
         break;
       case SampleType.snippet:
-        const String templateContents = '{{description}}\n{{code}}';
-        String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
-
-        try {
-          app = formatter.format(app);
-        } on FormatterException catch (exception) {
-          stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
-          errorExit('Unable to format snippet app template: $exception');
-        }
+        const String templateContents = '{{code}}';
+        final String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
         snippetData.add(TemplateInjection('app', app.split('\n')));
         sample.output = app;
         final int descriptionIndex =
@@ -293,20 +368,6 @@ class SnippetGenerator {
         final String descriptionString =
         descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
         sample.description = descriptionString;
-        break;
-      case SampleType.bare:
-        const String templateContents = '{{code}}';
-        String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
-
-        try {
-          app = formatter.format(app);
-        } on FormatterException catch (exception) {
-          stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
-          errorExit('Unable to format snippet app template: $exception');
-        }
-        snippetData.add(TemplateInjection('app', app.split('\n')));
-        sample.output = app;
-        sample.description = '';
         break;
     }
     sample.metadata['description'] = sample.description;

@@ -133,6 +133,12 @@ class Snippet extends CodeSample {
   Snippet(List<Line> input)
       : super(SampleType.snippet, <String>['snippet'], input);
 
+  factory Snippet.combine(List<Snippet> sections) {
+    final List<Line> code =
+    sections.expand((Snippet section) => section.input).toList();
+    return Snippet(code);
+  }
+
   factory Snippet.fromStrings(Line firstLine, List<String> code) {
     final List<Line> codeLines = <Line>[];
     int startPos = firstLine.startChar;
@@ -147,6 +153,14 @@ class Snippet extends CodeSample {
       startPos += code[i].length + 1;
     }
     return Snippet(codeLines);
+  }
+
+  factory Snippet.surround(String prefix, List<Line> code, String postfix) {
+    return Snippet(<Line>[
+      if (prefix.isNotEmpty) Line(prefix),
+      ...code,
+      if (postfix.isNotEmpty) Line(postfix),
+    ]);
   }
 
   @override
@@ -185,62 +199,4 @@ class ApplicationSample extends CodeSample {
       },
     ).toList();
   }
-}
-
-/// A class to represent a bare block of Dart sample code, marked by "```".
-///
-/// This is code that is not meant to be run as an application, but rather as a
-/// code usage example, but also not be separated into a separate box in the
-/// HTML output.
-class BareDartSample extends CodeSample {
-  BareDartSample(List<Line> input)
-      : super(SampleType.bare, <String>['bare'], input);
-
-  factory BareDartSample.combine(List<BareDartSample> sections) {
-    final List<Line> code =
-    sections.expand((BareDartSample section) => section.input).toList();
-    return BareDartSample(code);
-  }
-
-  factory BareDartSample.fromStrings(Line firstLine, List<String> code) {
-    final List<Line> codeLines = <Line>[];
-    int startPos = firstLine.startChar;
-    for (int i = 0; i < code.length; ++i) {
-      codeLines.add(
-        firstLine.copyWith(
-          code: code[i],
-          line: firstLine.line + i,
-          startChar: startPos,
-        ),
-      );
-      startPos += code[i].length + 1;
-    }
-    return BareDartSample(codeLines);
-  }
-
-  factory BareDartSample.surround(
-      Line firstLine, String prefix, List<String> code, String postfix) {
-    assert(prefix != null);
-    assert(postfix != null);
-    final List<Line> codeLines = <Line>[];
-    int startPos = firstLine.startChar;
-    for (int i = 0; i < code.length; ++i) {
-      codeLines.add(
-        firstLine.copyWith(
-          code: code[i],
-          line: firstLine.line + i,
-          startChar: startPos,
-        ),
-      );
-      startPos += code[i].length + 1;
-    }
-    return BareDartSample(<Line>[
-      Line(prefix),
-      ...codeLines,
-      Line(postfix),
-    ]);
-  }
-
-  @override
-  Line get start => input.firstWhere((Line line) => line.file != null);
 }

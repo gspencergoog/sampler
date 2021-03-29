@@ -18,10 +18,6 @@ enum SampleType {
 
   /// Produces a nicely formatted sample code, but no application.
   snippet,
-
-  /// Bare block of Dart in a comment. Doesn't get any special treatment, other
-  /// than being inside of code markers.
-  bare,
 }
 
 class SnippetException implements Exception {

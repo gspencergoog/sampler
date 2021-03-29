@@ -174,9 +174,6 @@ void main(List<String> argList) {
   );
   final SnippetGenerator generator = SnippetGenerator();
   final Map<String, Object?> metadata = <String, Object?>{
-    'sourcePath': sourcePath,
-    'sourceLine': sourceLine,
-    'id': id.join('.'),
     'channel': getChannelName(),
     'serial': serial,
     'package': packageName,
@@ -184,13 +181,12 @@ void main(List<String> argList) {
     'element': elementName,
   };
   for (final CodeSample sample in samples) {
+    sample.metadata.addAll(metadata);
     generator.generateCode(
       sample,
-      template: template,
-      metadata: metadata,
       output: output,
     );
-    print(generator.generateHtml(sample, metadata: metadata));
+    print(generator.generateHtml(sample));
   }
 
   exit(0);

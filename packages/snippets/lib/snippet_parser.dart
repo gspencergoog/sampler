@@ -31,24 +31,18 @@ class SnippetDartdocParser {
   /// A RegExp that matches the end of a code block within dartdoc.
   static final RegExp _codeBlockEndRegex = RegExp(r'///\s+```\s*$');
 
-  /// A RegExp that matches a Dart constructor.
-  static final RegExp _constructorRegExp = RegExp(r'(const\s+)?_*[A-Z][a-zA-Z0-9<>._]*\(');
-
-  // /// A RegExp that matches a dart version specification in an example preamble.
-  // static final RegExp _dartVersionOverrideRegExp =
-  //     RegExp(r'\/\/ (?<override>\/\/ @dart = (?<version>[0-9]+\.[0-9]+))');
-
-  /// A serial number so that we can create unique expression names when we
-  /// generate them.
-  int _expressionId = 0;
-
   /// Extracts the samples from the Dart files in [files], writes them
   /// to disk, and adds them to the appropriate [sectionMap] or [sampleMap].
   List<CodeSample> parse(
     File file, {
     bool silent = false,
   }) {
-    return parseFromComments(getFileComments(file), silent: silent, preamble: parsePreamble(file));
+    final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
+    final List<Line> preamble = parsePreamble(file);
+    if (preamble.isNotEmpty) {
+      samples.add(Snippet(preamble));
+    }
+    return samples;
   }
 
   List<CodeSample> parseFromDartdocToolFile(
@@ -65,12 +59,12 @@ class SnippetDartdocParser {
       // The parser wants to read the arguments from the input, so we create a new
       // tool line to match the given arguments, so that we can use the same parser for
       // editing and docs generation.
-      if (type != SampleType.bare) '/// {@tool ${getEnumName(type)}${template.isNotEmpty ? ' --template=$template}' : ''}}',
+      '/// {@tool ${getEnumName(type)}${template.isNotEmpty ? ' --template=$template}' : ''}}',
       // Snippet input comes in with the comment markers stripped, so we add them
       // back to make it conform to the source format, so we can use the same
       // parser for editing samples as we do for processing docs.
       ...input.readAsLinesSync().map<String>((String line) => '/// $line'),
-      if (type != SampleType.bare) '/// {@end-tool}',
+      '/// {@end-tool}',
     ];
     for (final String line in inputStrings) {
       lines.add(
@@ -78,6 +72,7 @@ class SnippetDartdocParser {
       );
       lineNumber++;
     }
+    // No need to get a preamble: dartdoc won't give that to us.
     final List<CodeSample> samples = parseFromComments(<List<Line>>[lines]);
     for (final CodeSample sample in samples) {
       sample.metadata.addAll(<String, Object?>{
@@ -130,21 +125,16 @@ class SnippetDartdocParser {
   List<CodeSample> parseFromComments(
     List<List<Line>> comments, {
     bool silent = false,
-    List<Line> preamble = const <Line>[],
   }) {
     int dartpadCount = 0;
     int sampleCount = 0;
     int snippetCount = 0;
-    int bareCount = 0;
 
     final List<CodeSample> samples = <CodeSample>[];
     for (final List<Line> commentLines in comments) {
       final List<CodeSample> newSamples = parseComment(commentLines);
       for (final CodeSample sample in newSamples) {
         switch (sample.type) {
-          case SampleType.bare:
-            bareCount++;
-            break;
           case SampleType.sample:
             sampleCount++;
             break;
@@ -158,11 +148,12 @@ class SnippetDartdocParser {
         samples.addAll(newSamples);
       }
     }
+
     if (!silent) {
-      print('Found:\n  $bareCount bare Dart blocks,\n'
+      print('Found:\n'
           '  $snippetCount snippet code blocks,\n'
           '  $sampleCount non-dartpad sample code sections, and\n'
-          '  $dartpadCount dartpad sections.');
+          '  $dartpadCount dartpad sections.\n');
     }
     return samples;
   }
@@ -234,7 +225,6 @@ class SnippetDartdocParser {
         if (inDart) {
           if (_codeBlockEndRegex.hasMatch(trimmedLine)) {
             inDart = false;
-            samples.add(_processBlock(startLine, block));
             block.clear();
           } else if (trimmedLine == _dartDocPrefix) {
             block.add('');
@@ -327,71 +317,5 @@ class SnippetDartdocParser {
       }
       return '$option${match[0]}';
     });
-  }
-
-  /// Process one block of sample code (the part inside of "```" markers).
-  /// Splits any sections denoted by "// ..." into separate blocks to be
-  /// processed separately. Uses a primitive heuristic to make sample blocks
-  /// into valid Dart code.
-  BareDartSample _processBlock(Line line, List<String> block) {
-    if (block.isEmpty) {
-      throw SnippetException('$line: Empty ```dart block in sample code.');
-    }
-    if (block.first.startsWith('new ') || block.first.startsWith(_constructorRegExp)) {
-      _expressionId += 1;
-      return BareDartSample.surround(line, 'dynamic expression$_expressionId = ', block.toList(), ';');
-    } else if (block.first.startsWith('await ')) {
-      _expressionId += 1;
-      return BareDartSample.surround(
-          line, 'Future<void> expression$_expressionId() async { ', block.toList(), ' }');
-    } else if (block.first.startsWith('class ') || block.first.startsWith('enum ')) {
-      return BareDartSample.fromStrings(line, block.toList());
-    } else if ((block.first.startsWith('_') || block.first.startsWith('final ')) &&
-        block.first.contains(' = ')) {
-      _expressionId += 1;
-      return BareDartSample.surround(line, 'void expression$_expressionId() { ', block.toList(), ' }');
-    } else {
-      final List<String> buffer = <String>[];
-      int blocks = 0;
-      Line? subLine;
-      final List<BareDartSample> subsections = <BareDartSample>[];
-      int startPos = line.startChar;
-      for (int index = 0; index < block.length; index += 1) {
-        // Each section of the dart code that is either split by a blank line, or with
-        // '// ...' is treated as a separate code block.
-        if (block[index] == '' || block[index] == '// ...') {
-          if (subLine == null)
-            throw SnippetException(
-                '${Line('', file: line.file, line: line.line + index, indent: line.indent)}: '
-                'Unexpected blank line or "// ..." line near start of block in sample code.');
-          blocks += 1;
-          subsections.add(_processBlock(subLine, buffer));
-          buffer.clear();
-          assert(buffer.isEmpty);
-          subLine = null;
-        } else if (block[index].startsWith('// ')) {
-          if (buffer.length > 1) // don't include leading comments
-            buffer.add(
-                '/${block[index]}'); // so that it doesn't start with "// " and get caught in this again
-        } else {
-          subLine ??= line.copyWith(
-            code: block[index],
-            line: line.line + index,
-            startChar: startPos,
-          );
-          buffer.add(block[index]);
-          startPos += block[index].length + 1;
-        }
-      }
-      if (blocks > 0) {
-        if (subLine != null) {
-          subsections.add(_processBlock(subLine, buffer));
-        }
-        // Combine all of the subsections into one section, now that they've been processed.
-        return BareDartSample.combine(subsections);
-      } else {
-        return BareDartSample.fromStrings(line, block.toList());
-      }
-    }
   }
 }
