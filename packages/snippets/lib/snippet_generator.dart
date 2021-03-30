@@ -7,8 +7,9 @@
 // found in the LICENSE file.
 
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' as io;
 
+import 'package:file/file.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as path;
 
@@ -22,9 +23,7 @@ class SnippetGenerator {
   SnippetGenerator({SnippetConfiguration? configuration})
       : configuration = configuration ??
             FlutterRepoSnippetConfiguration(
-              flutterRoot: Platform.environment['FLUTTER_ROOT'] == null
-                  ? getFlutterRoot()
-                  : Directory(Platform.environment['FLUTTER_ROOT']!),
+              flutterRoot: getFlutterRoot(),
             );
 
   /// The configuration used to determine where to get/save data for the
@@ -39,12 +38,12 @@ class SnippetGenerator {
 
   /// This returns the output file for a given snippet ID. Only used for
   /// [SampleType.sample] snippets.
-  File getOutputFile(String id) => File(path.join(configuration.outputDirectory.path, '$id.dart'));
+  File getOutputFile(String id) => configuration.filesystem.file(path.join(configuration.outputDirectory.path, '$id.dart'));
 
   /// Gets the path to the template file requested.
   File? getTemplatePath(String templateName, {Directory? templatesDir}) {
     final Directory templateDir = templatesDir ?? configuration.templatesDirectory;
-    final File templateFile = File(path.join(templateDir.path, '$templateName.tmpl'));
+    final File templateFile = configuration.filesystem.file(path.join(templateDir.path, '$templateName.tmpl'));
     return templateFile.existsSync() ? templateFile : null;
   }
 
@@ -54,6 +53,7 @@ class SnippetGenerator {
   String interpolateTemplate(
       List<TemplateInjection> injections, String template, Map<String, Object?> metadata) {
     final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
+    print('Metadata: $metadata');
     return template.replaceAllMapped(moustacheRegExp, (Match match) {
       if (match[1] == 'description') {
         // Place the description into a comment.
@@ -136,7 +136,7 @@ class SnippetGenerator {
       'serial': '',
       'id': sample.metadata['id']! as String,
       'channel': channel,
-      'element': sample.metadata['element'] as String? ?? '',
+      'element': sample.metadata['element'] as String? ?? sample.element,
       'app': '',
     };
     if (sample is ApplicationSample) {
@@ -352,15 +352,15 @@ class SnippetGenerator {
       case ApplicationSample:
         final Directory templatesDir = configuration.templatesDirectory;
         if (templatesDir == null) {
-          stderr.writeln('Unable to find the templates directory.');
-          exit(1);
+          io.stderr.writeln('Unable to find the templates directory.');
+          io.exit(1);
         }
         final String templateName = sample.template;
         final File? templateFile = getTemplatePath(templateName, templatesDir: templatesDir);
         if (templateFile == null) {
-          stderr.writeln('The template $templateName was not found in the templates '
+          io.stderr.writeln('The template $templateName was not found in the templates '
               'directory ${templatesDir.path}');
-          exit(1);
+          io.exit(1);
         }
         final String templateContents = _loadFileAsUtf8(templateFile);
         String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
@@ -368,7 +368,7 @@ class SnippetGenerator {
         try {
           app = formatter.format(app);
         } on FormatterException catch (exception) {
-          stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
+          io.stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
           errorExit('Unable to format snippet app template: $exception');
         }
         sample.output = app;
@@ -393,7 +393,7 @@ class SnippetGenerator {
     if (output != null) {
       output.writeAsStringSync(sample.output);
 
-      final File metadataFile = File(path.join(
+      final File metadataFile = configuration.filesystem.file(path.join(
           path.dirname(output.path), '${path.basenameWithoutExtension(output.path)}.json'));
       sample.metadata['file'] = path.basename(output.path);
       metadataFile.writeAsStringSync(jsonEncoder.convert(sample.metadata));

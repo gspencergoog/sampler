@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
+import 'dart:io' show Process, ProcessResult, Platform, stderr, exit;
+
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
@@ -17,6 +20,8 @@ const String _kOutputOption = 'output';
 const String _kPackageOption = 'package';
 const String _kTemplateOption = 'template';
 const String _kTypeOption = 'type';
+
+const LocalFileSystem filesystem = LocalFileSystem();
 
 String getChannelName() {
   final RegExp gitBranchRegexp = RegExp(r'^## (?<branch>.*)');
@@ -116,7 +121,7 @@ void main(List<String> argList) {
         'line, or in the INPUT environment variable.');
   }
 
-  final File input = File(args['input'] as String);
+  final File input = filesystem.file(args['input'] as String);
   if (!input.existsSync()) {
     errorExit('The input file ${input.path} does not exist.');
   }
@@ -140,7 +145,7 @@ void main(List<String> argList) {
   File? output;
   if (args[_kOutputOption] != null) {
     id.add(path.basename(path.basenameWithoutExtension(args[_kOutputOption] as String)));
-    output = File(path.absolute(args[_kOutputOption] as String));
+    output = filesystem.file(path.absolute(args[_kOutputOption] as String));
   } else {
     if (packageName.isNotEmpty && packageName != 'flutter') {
       id.add(packageName);
@@ -169,7 +174,7 @@ void main(List<String> argList) {
     input,
     startLine: sourceLine,
     element: elementName,
-    sourceFile: File(sourcePath),
+    sourceFile: filesystem.file(sourcePath),
     template: template!,
     type: sampleType,
   );

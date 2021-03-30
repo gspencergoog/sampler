@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
+import 'package:file/memory.dart';
 
 import 'package:test/test.dart' hide TypeMatcher, isInstanceOf;
 
@@ -10,10 +10,11 @@ import 'package:snippets/snippets.dart';
 
 void main() {
   group('Configuration', () {
+    final MemoryFileSystem memoryFileSystem = MemoryFileSystem();
     late SnippetConfiguration config;
 
     setUp(() {
-      config = FlutterRepoSnippetConfiguration(flutterRoot: Directory('/flutter sdk'));
+      config = FlutterRepoSnippetConfiguration(flutterRoot: memoryFileSystem.directory('/flutter sdk'));
     });
     test('config directory is correct', () async {
       expect(config.configDirectory.path,

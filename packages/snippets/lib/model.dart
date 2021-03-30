@@ -83,7 +83,7 @@ abstract class CodeSample {
   final String id;
   final List<Line> input;
   String description = '';
-  String element = '';
+  String get element => input.isEmpty ? '' : input.first.element ?? '';
   String output = '';
   Map<String, Object?> metadata = <String, Object?>{};
   List<TemplateInjection> parts = <TemplateInjection>[];
@@ -99,7 +99,10 @@ abstract class CodeSample {
   /// Creates a name for the snippets tool to use for the snippet ID from a
   /// filename and starting line number.
   static String _createNameFromSource(String prefix, Line start) {
-    String sampleId = path.split(start.file?.path ?? '').join('.');
+    final List<String> components = path.split(start.file?.absolute.path ?? '');
+    assert(components.contains('lib'));
+    components.removeRange(0, components.lastIndexOf('lib') + 1);
+    String sampleId = components.join('.');
     sampleId = path.basenameWithoutExtension(sampleId);
     sampleId = '$prefix.$sampleId.${start.line}';
     return sampleId;
@@ -110,9 +113,7 @@ abstract class CodeSample {
     final StringBuffer buf = StringBuffer('${args.join(' ')}:\n');
     for (final Line line in input) {
       buf.writeln(
-        ' [${line.startChar == -1 ? '??' : line.startChar}] '
-        '${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.text} '
-        ' -- ${line.element}',
+        '${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.text} ',
       );
     }
     return buf.toString();

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
+import 'package:file/file.dart';
 
 import 'analysis.dart';
 import 'model.dart';
@@ -42,6 +42,15 @@ class SnippetDartdocParser {
     if (preamble.isNotEmpty) {
       samples.add(SnippetSample(preamble));
     }
+    for (final CodeSample sample in samples) {
+      sample.metadata.addAll(<String, Object?>{
+        'id': sample.id,
+        'element': sample.element,
+        'sourcePath': file.path,
+        'sourceLine': sample.start.line,
+      });
+    }
+
     return samples;
   }
 
@@ -77,7 +86,7 @@ class SnippetDartdocParser {
     for (final CodeSample sample in samples) {
       sample.metadata.addAll(<String, Object?>{
         'id': sample.id,
-        'element': sample.start.element,
+        'element': sample.element,
         'sourcePath': sourceFile.path,
         'sourceLine': sample.start.line,
       });

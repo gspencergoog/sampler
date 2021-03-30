@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
+import 'dart:io' show exit;
+import 'package:file/local.dart';
 import 'package:args/args.dart';
 import 'package:snippets/snippets.dart';
+
+const LocalFileSystem filesystem = LocalFileSystem();
 
 void main(List<String> argList) {
   final ArgParser parser = ArgParser();
@@ -23,7 +26,7 @@ void main(List<String> argList) {
 
   final SnippetDartdocParser snippetParser = SnippetDartdocParser();
   final List<CodeSample> samples =
-      snippetParser.parse(File(args['file']! as String));
+      snippetParser.parse(filesystem.file(args['file']! as String));
 
   final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {

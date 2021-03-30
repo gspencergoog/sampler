@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' as io;
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 import 'package:process/process.dart' show ProcessManager, LocalProcessManager;
+import 'package:platform/platform.dart' show LocalPlatform, Platform;
 
 class SnippetException implements Exception {
   SnippetException(this.message, {this.file, this.line});
@@ -24,13 +27,17 @@ class SnippetException implements Exception {
   }
 }
 
-Directory getFlutterRoot() {
-  const ProcessManager manager = LocalProcessManager();
-  late ProcessResult result;
+Directory getFlutterRoot({Platform? platform, ProcessManager? processManager, FileSystem filesystem = const LocalFileSystem()}) {
+  final ProcessManager manager = processManager ?? const LocalProcessManager();
+  final Platform resolvedPlatform = platform ?? const LocalPlatform();
+  if (resolvedPlatform.environment['FLUTTER_ROOT'] != null) {
+    return filesystem.directory(resolvedPlatform.environment['FLUTTER_ROOT']!);
+  }
+  io.ProcessResult result;
   try {
     result = manager.runSync(<String>['flutter', '--version', '--machine'],
         stdoutEncoding: utf8);
-  } on ProcessException catch (e) {
+  } on io.ProcessException catch (e) {
     throw SnippetException(
         'Unable to determine Flutter root. Either set FLUTTER_ROOT, or place flutter command in your path.\n$e');
   }
@@ -44,12 +51,11 @@ Directory getFlutterRoot() {
     throw SnippetException(
         'Flutter command output format has changed, unable to determine flutter root location.');
   }
-  return Directory(map['flutterRoot']! as String);
+  return filesystem.directory(map['flutterRoot']! as String);
 }
 
-
 void errorExit(String message) {
-  stderr.writeln(message);
-  exit(1);
+  io.stderr.writeln(message);
+  io.exit(1);
 }
 

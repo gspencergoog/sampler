@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io' hide Platform;
-
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 import 'package:path/path.dart' as path;
 
 // Represents the locations of all of the data for snippets.
@@ -13,7 +13,10 @@ class SnippetConfiguration {
     required this.outputDirectory,
     required this.skeletonsDirectory,
     required this.templatesDirectory,
+    this.filesystem = const LocalFileSystem(),
   });
+
+  final FileSystem filesystem;
 
   /// This is the configuration directory for the snippets system, containing
   /// the skeletons and templates.
@@ -42,9 +45,8 @@ class SnippetConfiguration {
   /// Gets the skeleton file to use for the given [SampleType] and DartPad
   /// preference.
   File getHtmlSkeletonFile(String type) {
-    final String filename =
-        type == 'dartpad' ? 'dartpad-sample.html' : '$type.html';
-    return File(path.join(skeletonsDirectory.path, filename));
+    final String filename = type == 'dartpad' ? 'dartpad-sample.html' : '$type.html';
+    return filesystem.file(path.join(skeletonsDirectory.path, filename));
   }
 }
 
@@ -54,38 +56,41 @@ class PackageSnippetConfiguration extends SnippetConfiguration {
   PackageSnippetConfiguration({
     required Directory packageRoot,
     required Directory outputDirectory,
+    FileSystem filesystem = const LocalFileSystem(),
   }) : super(
-            configDirectory: _underRoot(packageRoot, const <String>['config']),
+            filesystem: filesystem,
+            configDirectory: _underRoot(filesystem, packageRoot, const <String>['config']),
             outputDirectory: outputDirectory,
-            skeletonsDirectory:
-                _underRoot(packageRoot, const <String>['config', 'skeletons']),
+            skeletonsDirectory: _underRoot(filesystem, packageRoot, const <String>['config', 'skeletons']),
             templatesDirectory: _underRoot(
+              filesystem,
               packageRoot,
               const <String>['config', 'templates'],
             ));
 
-  static Directory _underRoot(Directory packageRoot, List<String> dirs) =>
-      Directory(path.canonicalize(
-          path.joinAll(<String>[packageRoot.absolute.path, ...dirs])));
+  static Directory _underRoot(FileSystem fs, Directory packageRoot, List<String> dirs) =>
+      fs.directory(path.canonicalize(path.joinAll(<String>[packageRoot.absolute.path, ...dirs])));
 }
 
 /// A class to compute the configuration of the snippets input and output
 /// locations based in the current location of the snippets main.dart.
 class FlutterRepoSnippetConfiguration extends SnippetConfiguration {
-  FlutterRepoSnippetConfiguration({required Directory flutterRoot})
+  FlutterRepoSnippetConfiguration(
+      {required Directory flutterRoot, FileSystem filesystem = const LocalFileSystem()})
       : super(
-            configDirectory: _underRoot(
-                flutterRoot, const <String>['dev', 'snippets', 'config']),
-            outputDirectory: _underRoot(
-                flutterRoot, const <String>['dev', 'docs', 'doc', 'snippets']),
-            skeletonsDirectory: _underRoot(flutterRoot,
-                const <String>['dev', 'snippets', 'config', 'skeletons']),
-            templatesDirectory: _underRoot(
-              flutterRoot,
-              const <String>['dev', 'snippets', 'config', 'templates'],
-            ));
+          filesystem: filesystem,
+          configDirectory: _underRoot(filesystem, flutterRoot, const <String>['dev', 'snippets', 'config']),
+          outputDirectory:
+              _underRoot(filesystem, flutterRoot, const <String>['dev', 'docs', 'doc', 'snippets']),
+          skeletonsDirectory:
+              _underRoot(filesystem, flutterRoot, const <String>['dev', 'snippets', 'config', 'skeletons']),
+          templatesDirectory: _underRoot(
+            filesystem,
+            flutterRoot,
+            const <String>['dev', 'snippets', 'config', 'templates'],
+          ),
+        );
 
-  static Directory _underRoot(Directory flutterRoot, List<String> dirs) =>
-      Directory(path.canonicalize(
-          path.joinAll(<String>[flutterRoot.absolute.path, ...dirs])));
+  static Directory _underRoot(FileSystem fs, Directory flutterRoot, List<String> dirs) =>
+      fs.directory(path.canonicalize(path.joinAll(<String>[flutterRoot.absolute.path, ...dirs])));
 }
