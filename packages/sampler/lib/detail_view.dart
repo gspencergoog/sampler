@@ -4,6 +4,7 @@
 
 import 'package:file/file.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
@@ -20,6 +21,10 @@ class DetailView extends StatefulWidget {
   _DetailViewState createState() => _DetailViewState();
 }
 
+Future<void> _doExport(FlutterProject project) async {
+  await project.create(overwrite: true);
+}
+
 class _DetailViewState extends State<DetailView> {
   FlutterProject? project;
   bool exporting = false;
@@ -33,7 +38,7 @@ class _DetailViewState extends State<DetailView> {
         project = FlutterProject(Model.instance.workingSample!,
             location: outputLocation, flutterRoot: Model.instance.flutterRoot);
       }
-      project!.create(overwrite: true).then<void>((bool success) {
+      compute(_doExport, project!).whenComplete(() {
         setState(() {
           exporting = false;
         });

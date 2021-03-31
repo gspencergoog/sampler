@@ -53,8 +53,29 @@ class SnippetGenerator {
   /// "description" injection into a comment. Only used for
   /// [SampleType.sample] snippets.
   String interpolateTemplate(
-      List<TemplateInjection> injections, String template, Map<String, Object?> metadata) {
+    List<TemplateInjection> injections,
+    String template,
+    Map<String, Object?> metadata, {
+    bool addSectionMarkers = false,
+  }) {
     final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
+    String sectionArrows(String name, {bool start = true}) {
+      const int markerArrows = 8;
+      final String arrows = (start ? '⯆' : '⯅') * markerArrows;
+      final String marker = '//* $arrows $name $arrows (do not modify or remove section marker)';
+      return '${start ? '\n//*${'*' * marker.length}\n' : '\n'}'
+          '$marker'
+          '${!start ? '\n//*${'*' * marker.length}\n' : '\n'}';
+    }
+
+    String wrapSectionMarker(Iterable<String> contents, {required String name}) {
+      return <String>[
+        if (addSectionMarkers) sectionArrows(name, start: true),
+        ...contents,
+        if (addSectionMarkers) sectionArrows(name, start: false),
+      ].join('\n').trim();
+    }
+
     return template.replaceAllMapped(moustacheRegExp, (Match match) {
       if (match[1] == 'description') {
         // Place the description into a comment.
@@ -72,18 +93,18 @@ class SnippetGenerator {
         while (description.isNotEmpty && description.first == '// ') {
           description.removeAt(0);
         }
-        return description.join('\n').trim();
+        return wrapSectionMarker(description, name: 'description');
       } else {
-        // If the match isn't found in the injections, then just remove the
-        // mustache reference, since we want to allow the sections to be
-        // "optional" in the input: users shouldn't be forced to add an empty
-        // "```dart preamble" section if that section would be empty.
         final int componentIndex =
             injections.indexWhere((TemplateInjection injection) => injection.name == match[1]);
         if (componentIndex == -1) {
+          // If the match isn't found in the injections, then just remove the
+          // mustache reference, since we want to allow the sections to be
+          // "optional" in the input: users shouldn't be forced to add an empty
+          // "```dart preamble" section if that section would be empty.
           return (metadata[match[1]] ?? '').toString();
         }
-        return injections[componentIndex].mergedContent;
+        return wrapSectionMarker(injections[componentIndex].stringContents, name: match[1]!);
       }
     }).trim();
   }
@@ -345,6 +366,7 @@ class SnippetGenerator {
   String generateCode(
     CodeSample sample, {
     File? output,
+    bool addSectionMarkers = false,
   }) {
     configuration.createOutputDirectoryIfNeeded();
 
@@ -365,7 +387,12 @@ class SnippetGenerator {
           io.exit(1);
         }
         final String templateContents = _loadFileAsUtf8(templateFile);
-        String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
+        String app = interpolateTemplate(
+          snippetData,
+          addSectionMarkers ? '/// Template: ${templateFile.absolute.path}\n$templateContents' : templateContents,
+          sample.metadata,
+          addSectionMarkers: addSectionMarkers,
+        );
 
         try {
           app = formatter.format(app);
@@ -382,7 +409,12 @@ class SnippetGenerator {
         break;
       case SnippetSample:
         const String templateContents = '{{description}}\n{{code}}';
-        final String app = interpolateTemplate(snippetData, templateContents, sample.metadata);
+        final String app = interpolateTemplate(
+          snippetData,
+          templateContents,
+          sample.metadata,
+          addSectionMarkers: addSectionMarkers,
+        );
         sample.output = app;
         final int descriptionIndex =
             snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
