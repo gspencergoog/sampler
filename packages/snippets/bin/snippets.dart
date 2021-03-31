@@ -36,7 +36,9 @@ String getChannelName() {
 }
 
 const List<String> sampleTypes = <String>[
-  'snippet', 'sample', 'dartpad',
+  'snippet',
+  'sample',
+  'dartpad',
 ];
 
 /// Generates snippet dartdoc output for a given input, and creates any sample
@@ -49,15 +51,12 @@ void main(List<String> argList) {
     defaultsTo: 'dartpad',
     allowed: sampleTypes,
     allowedHelp: <String, String>{
-      'dartpad':
-          'Produce a code sample application complete with embedding the sample in an '
-              'application template for using in Dartpad.',
-      'sample':
-          'Produce a code sample application complete with embedding the sample in an '
-              'application template.',
-      'snippet':
-          'Produce a nicely formatted piece of sample code. Does not embed the '
-              'sample into an application template.',
+      'dartpad': 'Produce a code sample application complete with embedding the sample in an '
+          'application template for using in Dartpad.',
+      'sample': 'Produce a code sample application complete with embedding the sample in an '
+          'application template.',
+      'snippet': 'Produce a nicely formatted piece of sample code. Does not embed the '
+          'sample into an application template.',
     },
     help: 'The type of snippet to produce.',
   );

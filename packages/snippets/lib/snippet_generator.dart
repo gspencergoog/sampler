@@ -38,12 +38,14 @@ class SnippetGenerator {
 
   /// This returns the output file for a given snippet ID. Only used for
   /// [SampleType.sample] snippets.
-  File getOutputFile(String id) => configuration.filesystem.file(path.join(configuration.outputDirectory.path, '$id.dart'));
+  File getOutputFile(String id) =>
+      configuration.filesystem.file(path.join(configuration.outputDirectory.path, '$id.dart'));
 
   /// Gets the path to the template file requested.
   File? getTemplatePath(String templateName, {Directory? templatesDir}) {
     final Directory templateDir = templatesDir ?? configuration.templatesDirectory;
-    final File templateFile = configuration.filesystem.file(path.join(templateDir.path, '$templateName.tmpl'));
+    final File templateFile =
+        configuration.filesystem.file(path.join(templateDir.path, '$templateName.tmpl'));
     return templateFile.existsSync() ? templateFile : null;
   }
 
@@ -53,14 +55,13 @@ class SnippetGenerator {
   String interpolateTemplate(
       List<TemplateInjection> injections, String template, Map<String, Object?> metadata) {
     final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
-    print('Metadata: $metadata');
     return template.replaceAllMapped(moustacheRegExp, (Match match) {
       if (match[1] == 'description') {
         // Place the description into a comment.
         final List<String> description = injections
             .firstWhere((TemplateInjection tuple) => tuple.name == match[1])
             .contents
-            .map<String>((Line line) => '// ${line.text}')
+            .map<String>((SourceLine line) => '// ${line.text}')
             .toList();
         // Remove any leading/trailing empty comment lines.
         // We don't want to remove ALL empty comment lines, only the ones at the
@@ -152,17 +153,18 @@ class SnippetGenerator {
 
   /// Consolidates all of the snippets and the preamble into one snippet, in
   /// order to create a compilable result.
-  Iterable<Line> consolidateSnippets(List<CodeSample> samples) {
-    final List<CodeSample> preambles = samples.whereType<SnippetSample>().where((SnippetSample sample) {
-      final Iterable<Line> associatedWithFile =
-          sample.input.where((Line line) => line.hasFile);
+  Iterable<SourceLine> consolidateSnippets(List<CodeSample> samples) {
+    final List<CodeSample> preambles =
+        samples.whereType<SnippetSample>().where((SnippetSample sample) {
+      final Iterable<SourceLine> associatedWithFile =
+          sample.input.where((SourceLine line) => line.hasFile);
       if (associatedWithFile.isEmpty) {
         return false;
       }
       return associatedWithFile.first.element == '#preamble';
     }).toList();
     assert(preambles.length < 2);
-    final List<Line> snippetLines = <Line>[
+    final List<SourceLine> snippetLines = <SourceLine>[
       ...preambles.expand((CodeSample sample) => sample.input),
     ];
     final Iterable<SnippetSample> snippets = samples
@@ -173,7 +175,7 @@ class SnippetGenerator {
       snippetLines.addAll(_processBlocks(sample));
     }
     if (snippetLines.isEmpty) {
-      return <Line>[];
+      return <SourceLine>[];
     }
     return snippetLines;
   }
@@ -185,11 +187,11 @@ class SnippetGenerator {
   /// generate them.
   int _expressionId = 0;
 
-  List<Line> _surround(String prefix, Iterable<Line> body, String suffix) {
-    return <Line>[
-      if (prefix.isNotEmpty) Line(prefix),
+  List<SourceLine> _surround(String prefix, Iterable<SourceLine> body, String suffix) {
+    return <SourceLine>[
+      if (prefix.isNotEmpty) SourceLine(prefix),
       ...body,
-      if (suffix.isNotEmpty) Line(suffix),
+      if (suffix.isNotEmpty) SourceLine(suffix),
     ];
   }
 
@@ -197,18 +199,18 @@ class SnippetGenerator {
   /// Splits any sections denoted by "// ..." into separate blocks to be
   /// processed separately. Uses a primitive heuristic to make sample blocks
   /// into valid Dart code.
-  List<Line> _processBlocks(CodeSample sample) {
-    final List<Line> block = sample.parts
+  List<SourceLine> _processBlocks(CodeSample sample) {
+    final List<SourceLine> block = sample.parts
         .where((TemplateInjection injection) => injection.name != 'description')
-        .expand<Line>((TemplateInjection injection) => injection.contents)
+        .expand<SourceLine>((TemplateInjection injection) => injection.contents)
         .toList();
     if (block.isEmpty) {
-      return <Line>[];
+      return <SourceLine>[];
     }
     return _processBlock(block);
   }
 
-  List<Line> _processBlock(List<Line> block) {
+  List<SourceLine> _processBlock(List<SourceLine> block) {
     final String firstLine = block.first.text;
     if (firstLine.startsWith('new ') || firstLine.startsWith(_constructorRegExp)) {
       _expressionId += 1;
@@ -223,10 +225,10 @@ class SnippetGenerator {
       _expressionId += 1;
       return _surround('void expression$_expressionId() { ', block.toList(), ' }');
     } else {
-      final List<Line> buffer = <Line>[];
+      final List<SourceLine> buffer = <SourceLine>[];
       int blocks = 0;
-      Line? subLine;
-      final List<Line> subsections = <Line>[];
+      SourceLine? subLine;
+      final List<SourceLine> subsections = <SourceLine>[];
       for (int index = 0; index < block.length; index += 1) {
         // Each section of the dart code that is either split by a blank line, or with
         // '// ...' is treated as a separate code block.
@@ -241,7 +243,7 @@ class SnippetGenerator {
           subLine = null;
         } else if (block[index].text.startsWith('// ')) {
           if (buffer.length > 1) // don't include leading comments
-            buffer.add(Line(
+            buffer.add(SourceLine(
                 '/${block[index].text}')); // so that it doesn't start with "// " and get caught in this again
         } else {
           subLine ??= block[index];
@@ -264,12 +266,12 @@ class SnippetGenerator {
   /// returns them in the order found.
   List<TemplateInjection> parseInput(CodeSample sample) {
     bool inCodeBlock = false;
-    final List<Line> description = <Line>[];
+    final List<SourceLine> description = <SourceLine>[];
     final List<TemplateInjection> components = <TemplateInjection>[];
     String? language;
     final RegExp codeStartEnd =
         RegExp(r'^\s*```(?<language>[-\w]+|[-\w]+ (?<section>[-\w]+))?\s*$');
-    for (final Line line in sample.input) {
+    for (final SourceLine line in sample.input) {
       final RegExpMatch? match = codeStartEnd.firstMatch(line.text);
       if (match != null) {
         // If we saw the start or end of a code block
@@ -277,10 +279,10 @@ class SnippetGenerator {
         if (match.namedGroup('language') != null) {
           language = match[1]!;
           if (match.namedGroup('section') != null) {
-            components.add(TemplateInjection('code-${match.namedGroup('section')}', <Line>[],
+            components.add(TemplateInjection('code-${match.namedGroup('section')}', <SourceLine>[],
                 language: language));
           } else {
-            components.add(TemplateInjection('code', <Line>[], language: language));
+            components.add(TemplateInjection('code', <SourceLine>[], language: language));
           }
         } else {
           language = null;

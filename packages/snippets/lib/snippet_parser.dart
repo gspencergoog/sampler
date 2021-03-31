@@ -38,7 +38,7 @@ class SnippetDartdocParser {
     bool silent = false,
   }) {
     final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
-    final List<Line> preamble = parsePreamble(file);
+    final List<SourceLine> preamble = parsePreamble(file);
     if (preamble.isNotEmpty) {
       samples.add(SnippetSample(preamble));
     }
@@ -62,7 +62,7 @@ class SnippetDartdocParser {
     String template = '',
     String type = '',
   }) {
-    final List<Line> lines = <Line>[];
+    final List<SourceLine> lines = <SourceLine>[];
     int lineNumber = startLine ?? 0;
     final List<String> inputStrings = <String>[
       // The parser wants to read the arguments from the input, so we create a new
@@ -77,12 +77,12 @@ class SnippetDartdocParser {
     ];
     for (final String line in inputStrings) {
       lines.add(
-        Line(line, element: element ?? '', line: lineNumber, file: sourceFile),
+        SourceLine(line, element: element ?? '', line: lineNumber, file: sourceFile),
       );
       lineNumber++;
     }
     // No need to get a preamble: dartdoc won't give that to us.
-    final List<CodeSample> samples = parseFromComments(<List<Line>>[lines]);
+    final List<CodeSample> samples = parseFromComments(<List<SourceLine>>[lines]);
     for (final CodeSample sample in samples) {
       sample.metadata.addAll(<String, Object?>{
         'id': sample.id,
@@ -94,10 +94,10 @@ class SnippetDartdocParser {
     return samples;
   }
 
-  List<Line> parsePreamble(File file) {
+  List<SourceLine> parsePreamble(File file) {
     // Whether or not we're in the file-wide preamble section ("Examples can assume").
     bool inPreamble = false;
-    final List<Line> preamble = <Line>[];
+    final List<SourceLine> preamble = <SourceLine>[];
     int lineNumber = 0;
     int charPosition = 0;
     for (final String line in file.readAsLinesSync()) {
@@ -117,7 +117,7 @@ class SnippetDartdocParser {
         continue;
       }
       if (inPreamble) {
-        preamble.add(Line(
+        preamble.add(SourceLine(
           line.substring(3),
           startChar: charPosition,
           endChar: charPosition + line.length + 1,
@@ -133,7 +133,7 @@ class SnippetDartdocParser {
   }
 
   List<CodeSample> parseFromComments(
-    List<List<Line>> comments, {
+    List<List<SourceLine>> comments, {
     bool silent = false,
   }) {
     int dartpadCount = 0;
@@ -141,7 +141,7 @@ class SnippetDartdocParser {
     int snippetCount = 0;
 
     final List<CodeSample> samples = <CodeSample>[];
-    for (final List<Line> commentLines in comments) {
+    for (final List<SourceLine> commentLines in comments) {
       final List<CodeSample> newSamples = parseComment(commentLines);
       for (final CodeSample sample in newSamples) {
         switch (sample.runtimeType) {
@@ -168,17 +168,17 @@ class SnippetDartdocParser {
     return samples;
   }
 
-  List<CodeSample> parseComment(List<Line> comments) {
+  List<CodeSample> parseComment(List<SourceLine> comments) {
     // Whether or not we're in a snippet code sample (with template) specifically.
     bool inSnippet = false;
     // Whether or not we're in a '```dart' segment.
     bool inDart = false;
     final List<String> block = <String>[];
     List<String> snippetArgs = <String>[];
-    Line startLine = const Line('');
+    SourceLine startLine = const SourceLine('');
     final List<CodeSample> samples = <CodeSample>[];
 
-    for (final Line line in comments) {
+    for (final SourceLine line in comments) {
       final String trimmedLine = line.text.trim();
       if (inSnippet) {
         if (!trimmedLine.startsWith(_dartDocPrefix)) {
@@ -255,8 +255,8 @@ class SnippetDartdocParser {
         if (sampleMatch != null) {
           inSnippet = sampleMatch != null &&
               (sampleMatch.namedGroup('type') == 'snippet' ||
-               sampleMatch.namedGroup('type') == 'sample' ||
-               sampleMatch.namedGroup('type') == 'dartpad');
+                  sampleMatch.namedGroup('type') == 'sample' ||
+                  sampleMatch.namedGroup('type') == 'dartpad');
           if (inSnippet) {
             startLine = line.copyWith(
               indent: line.text.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length,

@@ -61,7 +61,8 @@ class PackageSnippetConfiguration extends SnippetConfiguration {
             filesystem: filesystem,
             configDirectory: _underRoot(filesystem, packageRoot, const <String>['config']),
             outputDirectory: outputDirectory,
-            skeletonsDirectory: _underRoot(filesystem, packageRoot, const <String>['config', 'skeletons']),
+            skeletonsDirectory:
+                _underRoot(filesystem, packageRoot, const <String>['config', 'skeletons']),
             templatesDirectory: _underRoot(
               filesystem,
               packageRoot,
@@ -79,11 +80,12 @@ class FlutterRepoSnippetConfiguration extends SnippetConfiguration {
       {required Directory flutterRoot, FileSystem filesystem = const LocalFileSystem()})
       : super(
           filesystem: filesystem,
-          configDirectory: _underRoot(filesystem, flutterRoot, const <String>['dev', 'snippets', 'config']),
+          configDirectory:
+              _underRoot(filesystem, flutterRoot, const <String>['dev', 'snippets', 'config']),
           outputDirectory:
               _underRoot(filesystem, flutterRoot, const <String>['dev', 'docs', 'doc', 'snippets']),
-          skeletonsDirectory:
-              _underRoot(filesystem, flutterRoot, const <String>['dev', 'snippets', 'config', 'skeletons']),
+          skeletonsDirectory: _underRoot(
+              filesystem, flutterRoot, const <String>['dev', 'snippets', 'config', 'skeletons']),
           templatesDirectory: _underRoot(
             filesystem,
             flutterRoot,

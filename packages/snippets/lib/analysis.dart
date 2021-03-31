@@ -2,20 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
-
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:file/file.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 import 'interval_tree.dart';
 import 'model.dart';
 
-List<List<Line>> getFileComments(File file) {
+List<List<SourceLine>> getFileComments(File file) {
   final ParseStringResult parseResult = parseFile(
       featureSet: FeatureSet.fromEnableFlags2(
         // TODO(gspencergoog): Get the version string from the flutter --version
@@ -23,8 +22,7 @@ List<List<Line>> getFileComments(File file) {
         flags: <String>[],
       ),
       path: file.absolute.path);
-  final _CommentVisitor<CompilationUnit> visitor =
-      _CommentVisitor<CompilationUnit>(file);
+  final _CommentVisitor<CompilationUnit> visitor = _CommentVisitor<CompilationUnit>(file);
   visitor.visitCompilationUnit(parseResult.unit);
   visitor.assignLineNumbers();
   return visitor.results.values.toList();
@@ -54,16 +52,15 @@ class _LineNumberInterval extends Interval<_LineNumber<int>> {
 }
 
 class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
-  _CommentVisitor(this.file) : results = <String, List<Line>>{};
+  _CommentVisitor(this.file) : results = <String, List<SourceLine>>{};
 
-  final Map<String, List<Line>> results;
+  final Map<String, List<SourceLine>> results;
 
   File file;
 
   void dumpResult() {
     for (final String key in results.keys) {
-      print(
-          '$key: ${results[key]!.length} lines at line ${results[key]!.first.line}');
+      print('$key: ${results[key]!.length} lines at line ${results[key]!.first.line}');
     }
   }
 
@@ -71,8 +68,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     final String contents = file.readAsStringSync();
     int lineNumber = 0;
     int startRange = 0;
-    final IntervalTree<_LineNumber<int>> itree =
-        IntervalTree<_LineNumber<int>>();
+    final IntervalTree<_LineNumber<int>> itree = IntervalTree<_LineNumber<int>>();
     for (int i = 0; i < contents.length; ++i) {
       if (contents[i] == '\n') {
         itree.add(_LineNumberInterval(startRange, i, lineNumber));
@@ -81,13 +77,11 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
       }
     }
     for (final String key in results.keys) {
-      final List<Line> newLines = <Line>[];
-      for (final Line line in results[key]!) {
-        final IntervalTree<_LineNumber<int>> resultTree =
-            IntervalTree<_LineNumber<int>>()
-              ..add(_LineNumberInterval(line.startChar, line.endChar, -1));
-        final IntervalTree<_LineNumber<int>> intersection =
-            itree.intersection(resultTree);
+      final List<SourceLine> newLines = <SourceLine>[];
+      for (final SourceLine line in results[key]!) {
+        final IntervalTree<_LineNumber<int>> resultTree = IntervalTree<_LineNumber<int>>()
+          ..add(_LineNumberInterval(line.startChar, line.endChar, -1));
+        final IntervalTree<_LineNumber<int>> intersection = itree.intersection(resultTree);
         if (intersection.isNotEmpty) {
           final int lineNumber = intersection.single.start.line == -1
               ? intersection.single.end.line
@@ -101,11 +95,11 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     }
   }
 
-  List<Line> _processComment(String element, Comment comment) {
-    final List<Line> result = <Line>[];
+  List<SourceLine> _processComment(String element, Comment comment) {
+    final List<SourceLine> result = <SourceLine>[];
     if (comment.tokens.isNotEmpty) {
       for (final Token token in comment.tokens) {
-        result.add(Line(
+        result.add(SourceLine(
           token.toString(),
           element: element,
           file: file,
@@ -125,8 +119,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
 
   @override
   T? visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
-    if (node.documentationComment != null &&
-        node.documentationComment!.tokens.isNotEmpty) {
+    if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
       for (final VariableDeclaration declaration in node.variables.variables) {
         if (!declaration.name.name.startsWith('_')) {
           results['global ${declaration.name.name}'] =
@@ -150,8 +143,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
 
   @override
   T? visitFieldDeclaration(FieldDeclaration node) {
-    if (node.documentationComment != null &&
-        node.documentationComment!.tokens.isNotEmpty) {
+    if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
       for (final VariableDeclaration declaration in node.fields.variables) {
         if (!declaration.name.name.startsWith('_')) {
           results['field ${declaration.name.name}'] =

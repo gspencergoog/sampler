@@ -18,15 +18,13 @@ void main(List<String> argList) {
   );
   final ArgResults args = parser.parse(argList);
   if (!args.wasParsed('file')) {
-    print(
-        'File containing samples to edit must be specified with the --file option.');
+    print('File containing samples to edit must be specified with the --file option.');
     print(parser.usage);
     exit(-1);
   }
 
   final SnippetDartdocParser snippetParser = SnippetDartdocParser();
-  final List<CodeSample> samples =
-      snippetParser.parse(filesystem.file(args['file']! as String));
+  final List<CodeSample> samples = snippetParser.parse(filesystem.file(args['file']! as String));
 
   final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {
@@ -34,6 +32,6 @@ void main(List<String> argList) {
     print('Generated:\n${generator.generateCode(sample)}');
   }
 
-  final Iterable<Line> consolidated = generator.consolidateSnippets(samples);
-  print('Consolidated:\n${consolidated.map<String>((Line line) => line.text).join('\n')}');
+  final Iterable<SourceLine> consolidated = generator.consolidateSnippets(samples);
+  print('Consolidated:\n${consolidated.map<String>((SourceLine line) => line.text).join('\n')}');
 }

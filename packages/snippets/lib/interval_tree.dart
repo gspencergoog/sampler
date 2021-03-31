@@ -114,10 +114,7 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
     if (start.compareTo(other.start) >= 0 && end.compareTo(other.end) > 0) {
       return <Interval<T>>[Interval<T>(other.end, end)];
     }
-    return <Interval<T>>[
-      Interval<T>(start, other.start),
-      Interval<T>(other.end, end)
-    ];
+    return <Interval<T>>[Interval<T>(start, other.start), Interval<T>(other.end, end)];
   }
 
   /// Compares this interval to the [other] interval.
@@ -133,9 +130,7 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   /// - zero if this interval is _equal to_ the [other] interval.
   @override
   int compareTo(Interval<T> other) {
-    return start == other.start
-        ? _cmp(end, other.end)
-        : _cmp(start, other.start);
+    return start == other.start ? _cmp(end, other.end) : _cmp(start, other.start);
   }
 
   /// Returns `true` if this interval start or ends before the [other] interval.
@@ -255,8 +250,7 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
   }
 
   /// Creates a tree from [intervals].
-  factory IntervalTree.of(Iterable<Interval<T>> intervals) =>
-      IntervalTree<T>()..addAll(intervals);
+  factory IntervalTree.of(Iterable<Interval<T>> intervals) => IntervalTree<T>()..addAll(intervals);
 
   /// Adds an [interval] into this tree.
   void add(dynamic interval) {
@@ -339,12 +333,10 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
   }
 
   // Returns the union of this tree and the [other] tree.
-  IntervalTree<T> union(IntervalTree<T> other) =>
-      IntervalTree<T>.of(this)..addAll(other);
+  IntervalTree<T> union(IntervalTree<T> other) => IntervalTree<T>.of(this)..addAll(other);
 
   // Returns the difference between this tree and the [other] tree.
-  IntervalTree<T> difference(IntervalTree<T> other) =>
-      IntervalTree<T>.of(this)..removeAll(other);
+  IntervalTree<T> difference(IntervalTree<T> other) => IntervalTree<T>.of(this)..removeAll(other);
 
   // Returns the intersection of this tree and the [other] tree.
   IntervalTree<T> intersection(IntervalTree<T> other) {
@@ -458,6 +450,5 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
     return true;
   }
 
-  final AvlTreeSet<Interval<T>> _tree =
-      AvlTreeSet<Interval<T>>(comparator: Comparable.compare);
+  final AvlTreeSet<Interval<T>> _tree = AvlTreeSet<Interval<T>>(comparator: Comparable.compare);
 }

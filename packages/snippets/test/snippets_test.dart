@@ -20,7 +20,7 @@ void main() {
     late File template;
 
     void _writeSkeleton(String type) {
-      switch(type) {
+      switch (type) {
         case 'dartpad':
           configuration.getHtmlSkeletonFile('dartpad').writeAsStringSync('''
 <div>HTML Bits (DartPad-style)</div>
@@ -43,12 +43,14 @@ void main() {
 
     setUp(() {
       tmpDir = memoryFileSystem.systemTempDirectory.createTempSync('flutter_snippets_test.');
-      configuration = FlutterRepoSnippetConfiguration(flutterRoot: memoryFileSystem.directory(path.join(
-          tmpDir.absolute.path, 'flutter')), filesystem: memoryFileSystem);
+      configuration = FlutterRepoSnippetConfiguration(
+          flutterRoot: memoryFileSystem.directory(path.join(tmpDir.absolute.path, 'flutter')),
+          filesystem: memoryFileSystem);
       configuration.createOutputDirectoryIfNeeded();
       configuration.templatesDirectory.createSync(recursive: true);
       configuration.skeletonsDirectory.createSync(recursive: true);
-      template = memoryFileSystem.file(path.join(configuration.templatesDirectory.path, 'template.tmpl'));
+      template =
+          memoryFileSystem.file(path.join(configuration.templatesDirectory.path, 'template.tmpl'));
       template.writeAsStringSync('''
 // Flutter code sample for {{element}}
 
@@ -68,9 +70,10 @@ main() {
     });
 
     test('generates samples', () async {
-      final File inputFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync(r'''
+      final File inputFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync(r'''
 A description of the snippet.
 
 On several lines.
@@ -85,7 +88,8 @@ void main() {
 }
 ```
 ''');
-      final File outputFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_out.txt'));
+      final File outputFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_out.txt'));
       final SnippetDartdocParser sampleParser = SnippetDartdocParser();
       const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
       const int sourceLine = 222;
@@ -129,9 +133,10 @@ void main() {
     });
 
     test('generates snippets', () async {
-      final File inputFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync(r'''
+      final File inputFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync(r'''
 A description of the snippet.
 
 On several lines.
@@ -163,15 +168,19 @@ void main() {
       expect(html, contains('<div>HTML Bits</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
       expect(html, contains(r'  print(&#39;The actual $name.&#39;);'));
-      expect(html, contains('<div class="snippet-description">{@end-inject-html}A description of the snippet.\n\n'
-          'On several lines.{@inject-html}</div>\n'));
+      expect(
+          html,
+          contains(
+              '<div class="snippet-description">{@end-inject-html}A description of the snippet.\n\n'
+              'On several lines.{@inject-html}</div>\n'));
       expect(html, contains('main() {'));
     });
 
     test('generates dartpad samples', () async {
-      final File inputFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync(r'''
+      final File inputFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync(r'''
 A description of the snippet.
 
 On several lines.
@@ -203,13 +212,17 @@ void main() {
       final String html = generator.generateHtml(samples.first);
       expect(html, contains('<div>HTML Bits (DartPad-style)</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
-      expect(html, contains('<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=dartpad.packages.flutter.lib.src.widgets.foo.222&sample_channel=stable"></iframe>\n'));
+      expect(
+          html,
+          contains(
+              '<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=dartpad.packages.flutter.lib.src.widgets.foo.222&sample_channel=stable"></iframe>\n'));
     });
 
     test('generates sample metadata', () async {
-      final File inputFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync(r'''
+      final File inputFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_in.txt'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync(r'''
 A description of the snippet.
 
 On several lines.
@@ -221,8 +234,10 @@ void main() {
 ```
 ''');
 
-      final File outputFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_out.dart'));
-      final File expectedMetadataFile = memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_out.json'));
+      final File outputFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_out.dart'));
+      final File expectedMetadataFile =
+          memoryFileSystem.file(path.join(tmpDir.absolute.path, 'snippet_out.json'));
 
       final SnippetDartdocParser sampleParser = SnippetDartdocParser();
       const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
@@ -239,7 +254,8 @@ void main() {
       samples.first.metadata.addAll(<String, Object>{'channel': 'stable'});
       generator.generateCode(samples.first, output: outputFile);
       expect(expectedMetadataFile.existsSync(), isTrue);
-      final Map<String, dynamic> json = jsonDecode(expectedMetadataFile.readAsStringSync()) as Map<String, dynamic>;
+      final Map<String, dynamic> json =
+          jsonDecode(expectedMetadataFile.readAsStringSync()) as Map<String, dynamic>;
       expect(json['id'], equals('sample.packages.flutter.lib.src.widgets.foo.222'));
       expect(json['channel'], equals('stable'));
       expect(json['file'], equals('snippet_out.dart'));

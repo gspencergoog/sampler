@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
+import 'package:file/file.dart';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
 
 /// A class to represent a line of input code.
-class Line {
-  const Line(
+class SourceLine {
+  const SourceLine(
     this.text, {
     this.file,
     this.element,
@@ -32,7 +32,7 @@ class Line {
     return toString();
   }
 
-  Line copyWith({
+  SourceLine copyWith({
     String? element,
     String? text,
     File? file,
@@ -41,7 +41,7 @@ class Line {
     int? endChar,
     int? indent,
   }) {
-    return Line(
+    return SourceLine(
       text ?? this.text,
       element: element ?? this.element,
       file: file ?? this.file,
@@ -63,9 +63,9 @@ class Line {
 class TemplateInjection {
   TemplateInjection(this.name, this.contents, {this.language = ''});
   final String name;
-  final List<Line> contents;
+  final List<SourceLine> contents;
   final String language;
-  Iterable<String> get stringContents => contents.map<String>((Line line) => line.text);
+  Iterable<String> get stringContents => contents.map<String>((SourceLine line) => line.text);
   String get mergedContent => stringContents.join('\n').trim();
 }
 
@@ -81,13 +81,13 @@ abstract class CodeSample {
 
   final List<String> args;
   final String id;
-  final List<Line> input;
+  final List<SourceLine> input;
   String description = '';
   String get element => input.isEmpty ? '' : input.first.element ?? '';
   String output = '';
   Map<String, Object?> metadata = <String, Object?>{};
   List<TemplateInjection> parts = <TemplateInjection>[];
-  Line get start => input.first;
+  SourceLine get start => input.first;
 
   String get template {
     final ArgParser parser = ArgParser();
@@ -98,7 +98,7 @@ abstract class CodeSample {
 
   /// Creates a name for the snippets tool to use for the snippet ID from a
   /// filename and starting line number.
-  static String _createNameFromSource(String prefix, Line start) {
+  static String _createNameFromSource(String prefix, SourceLine start) {
     final List<String> components = path.split(start.file?.absolute.path ?? '');
     assert(components.contains('lib'));
     components.removeRange(0, components.lastIndexOf('lib') + 1);
@@ -111,7 +111,7 @@ abstract class CodeSample {
   @override
   String toString() {
     final StringBuffer buf = StringBuffer('${args.join(' ')}:\n');
-    for (final Line line in input) {
+    for (final SourceLine line in input) {
       buf.writeln(
         '${(line.line == -1 ? '??' : line.line).toString().padLeft(4, ' ')}: ${line.text} ',
       );
@@ -130,18 +130,16 @@ abstract class CodeSample {
 /// blocks for an entire file, since they are evaluated in the analysis tool in
 /// a single block.
 class SnippetSample extends CodeSample {
-  SnippetSample(List<Line> input)
-      : super(<String>['snippet'], input);
+  SnippetSample(List<SourceLine> input) : super(<String>['snippet'], input);
 
   factory SnippetSample.combine(List<SnippetSample> sections) {
-    final List<Line> code =
-    sections.expand((SnippetSample section) => section.input).toList();
+    final List<SourceLine> code =
+        sections.expand((SnippetSample section) => section.input).toList();
     return SnippetSample(code);
   }
 
-
-  factory SnippetSample.fromStrings(Line firstLine, List<String> code) {
-    final List<Line> codeLines = <Line>[];
+  factory SnippetSample.fromStrings(SourceLine firstLine, List<String> code) {
+    final List<SourceLine> codeLines = <SourceLine>[];
     int startPos = firstLine.startChar;
     for (int i = 0; i < code.length; ++i) {
       codeLines.add(
@@ -156,11 +154,11 @@ class SnippetSample extends CodeSample {
     return SnippetSample(codeLines);
   }
 
-  factory SnippetSample.surround(String prefix, List<Line> code, String postfix) {
-    return SnippetSample(<Line>[
-      if (prefix.isNotEmpty) Line(prefix),
+  factory SnippetSample.surround(String prefix, List<SourceLine> code, String postfix) {
+    return SnippetSample(<SourceLine>[
+      if (prefix.isNotEmpty) SourceLine(prefix),
       ...code,
-      if (postfix.isNotEmpty) Line(postfix),
+      if (postfix.isNotEmpty) SourceLine(postfix),
     ]);
   }
 
@@ -168,7 +166,7 @@ class SnippetSample extends CodeSample {
   String get template => '';
 
   @override
-  Line get start => input.firstWhere((Line line) => line.file != null);
+  SourceLine get start => input.firstWhere((SourceLine line) => line.file != null);
 
   @override
   String get type => 'snippet';
@@ -183,18 +181,18 @@ class SnippetSample extends CodeSample {
 /// in the source file.
 class ApplicationSample extends CodeSample {
   ApplicationSample({
-    Line start = const Line(''),
+    SourceLine start = const SourceLine(''),
     List<String> input = const <String>[],
     required List<String> args,
-  })  : assert(args.isNotEmpty),
+  })   : assert(args.isNotEmpty),
         super(args, _convertInput(input, start));
 
-  static List<Line> _convertInput(List<String> input, Line start) {
+  static List<SourceLine> _convertInput(List<String> input, SourceLine start) {
     int lineNumber = start.line;
     int startChar = start.startChar;
-    return input.map<Line>(
+    return input.map<SourceLine>(
       (String line) {
-        final Line result = start.copyWith(
+        final SourceLine result = start.copyWith(
           text: line,
           line: lineNumber,
           startChar: startChar,
@@ -219,12 +217,11 @@ class ApplicationSample extends CodeSample {
 /// the source file.
 class DartpadSample extends ApplicationSample {
   DartpadSample({
-    Line start = const Line(''),
+    SourceLine start = const SourceLine(''),
     List<String> input = const <String>[],
     required List<String> args,
-  })  : assert(args.isNotEmpty),
+  })   : assert(args.isNotEmpty),
         super(start: start, input: input, args: args);
-
 
   @override
   String get type => 'dartpad';
