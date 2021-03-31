@@ -40,7 +40,7 @@ class SnippetDartdocParser {
     final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
     final List<SourceLine> preamble = parsePreamble(file);
     if (preamble.isNotEmpty) {
-      samples.add(SnippetSample(preamble));
+      samples.add(SnippetSample(preamble, index: 0));
     }
     for (final CodeSample sample in samples) {
       sample.metadata.addAll(<String, Object?>{
@@ -178,6 +178,7 @@ class SnippetDartdocParser {
     SourceLine startLine = const SourceLine('');
     final List<CodeSample> samples = <CodeSample>[];
 
+    int index = 0;
     for (final SourceLine line in comments) {
       final String trimmedLine = line.text.trim();
       if (inSnippet) {
@@ -189,7 +190,7 @@ class SnippetDartdocParser {
           switch (snippetArgs.first) {
             case 'snippet':
               samples.add(
-                SnippetSample.fromStrings(startLine, block),
+                SnippetSample.fromStrings(startLine, block, index: index++),
               );
               break;
             case 'sample':
@@ -198,6 +199,7 @@ class SnippetDartdocParser {
                   start: startLine,
                   input: block,
                   args: snippetArgs,
+                  index: index++,
                 ),
               );
               break;
@@ -207,6 +209,7 @@ class SnippetDartdocParser {
                   start: startLine,
                   input: block,
                   args: snippetArgs,
+                  index: index++,
                 ),
               );
               break;

@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:platform/platform.dart';
 
-import 'model.dart';
 import 'utils.dart';
 
 class DataLabel extends StatelessWidget {
@@ -47,6 +46,7 @@ class OutputLocation extends StatelessWidget {
     required this.location,
     this.file,
     this.label = '',
+    this.startLine = 0,
     Platform platform = const LocalPlatform(),
   })  : _fileBrowserName = _getFileBrowserName(platform),
         assert(file == null || file.absolute.path.contains(location.absolute.path),
@@ -57,11 +57,12 @@ class OutputLocation extends StatelessWidget {
   final File? file;
   final String label;
   final String _fileBrowserName;
+  final int startLine;
 
   static String _getFileBrowserName(Platform platform) {
     switch (platform.operatingSystem) {
       case 'windows':
-        return 'EXPLORER';
+        return 'FILE EXPLORER';
       case 'macos':
         return 'FINDER';
       case 'linux':
@@ -111,7 +112,7 @@ class OutputLocation extends StatelessWidget {
                     child: TextButton(
                         child: Text('OPEN IN ${getIdeName(type).toUpperCase()}'),
                         onPressed: () {
-                          openInIde(type, file ?? location);
+                          openInIde(type, file ?? location, startLine: startLine);
                         }),
                   ),
               ],

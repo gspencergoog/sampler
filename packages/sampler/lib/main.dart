@@ -161,6 +161,7 @@ class _SamplerState extends State<Sampler> {
                 setState(() {
                   textEditingController.clear();
                   Model.instance.setWorkingFile(null);
+                  Model.instance.workingSample = null;
                 });
               })
           : null,

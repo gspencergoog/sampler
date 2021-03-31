@@ -22,7 +22,7 @@ class DetailView extends StatefulWidget {
 }
 
 Future<void> _doExport(FlutterProject project) async {
-  await project.create(overwrite: true);
+  await project.export(overwrite: true);
 }
 
 class _DetailViewState extends State<DetailView> {
@@ -34,7 +34,7 @@ class _DetailViewState extends State<DetailView> {
       exporting = true;
       if (project == null) {
         final Directory outputLocation =
-        Model.instance.filesystem.systemTempDirectory.createTempSync('flutter_sample.');
+            Model.instance.filesystem.systemTempDirectory.createTempSync('flutter_sample.');
         project = FlutterProject(Model.instance.workingSample!,
             location: outputLocation, flutterRoot: Model.instance.flutterRoot);
       }
@@ -70,7 +70,9 @@ class _DetailViewState extends State<DetailView> {
         child: Column(
           children: <Widget>[
             DataLabel(label: 'Type of sample:', data: sample.type),
-            DataLabel(label: 'Sample is attached to:', data: '${sample.element} starting at line ${sample.start.line}'),
+            DataLabel(
+                label: 'Sample is attached to:',
+                data: '${sample.element} starting at line ${sample.start.line}'),
             Stack(
               alignment: Alignment.center,
               children: <Widget>[
@@ -83,15 +85,15 @@ class _DetailViewState extends State<DetailView> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.all(Radius.circular(10.0)))),
                   child: Row(
-                    mainAxisAlignment: project == null
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                        project == null ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
                       TextButton(
                           child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
                           onPressed: _exportSample),
-                      if (project != null && !exporting) OutputLocation(location: project!.location),
+                      if (project != null && !exporting)
+                        OutputLocation(location: project!.location),
                     ],
                   ),
                 ),
@@ -113,7 +115,11 @@ class _DetailViewState extends State<DetailView> {
                       child: const Text('SAVE TO FRAMEWORK FILE'), onPressed: _saveToFrameworkFile),
                   const Spacer(),
                   if (sample.start.file != null)
-                    OutputLocation(location: sample.start.file!.parent, file: sample.start.file!),
+                    OutputLocation(
+                      location: sample.start.file!.parent,
+                      file: sample.start.file!,
+                      startLine: sample.start.line,
+                    ),
                 ],
               ),
             ),

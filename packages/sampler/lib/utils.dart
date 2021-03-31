@@ -57,13 +57,21 @@ String getIdeName(IdeType type) {
 }
 
 void openInIde(IdeType type, FileSystemEntity location,
-    {ProcessManager processManager = const LocalProcessManager()}) {
+    {ProcessManager processManager = const LocalProcessManager(), int startLine = 0}) {
   switch (type) {
     case IdeType.idea:
-      processManager.run(<String>['idea', location.absolute.path], runInShell: true);
+      processManager.run(<String>[
+        'idea',
+        if (startLine != 0) '${location.absolute.path}:$startLine',
+        if (startLine == 0) location.absolute.path,
+      ], runInShell: true);
       break;
     case IdeType.vscode:
-      processManager.run(<String>['code', location.absolute.path], runInShell: true);
+      processManager.run(<String>[
+        'code',
+        '--goto',
+        '${location.absolute.path}:$startLine',
+      ], runInShell: true);
       break;
   }
 }

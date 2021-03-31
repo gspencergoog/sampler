@@ -55,6 +55,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
   _CommentVisitor(this.file) : results = <String, List<SourceLine>>{};
 
   final Map<String, List<SourceLine>> results;
+  String enclosingClass = '';
 
   File file;
 
@@ -146,8 +147,9 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
       for (final VariableDeclaration declaration in node.fields.variables) {
         if (!declaration.name.name.startsWith('_')) {
-          results['field ${declaration.name.name}'] =
-              _processComment(declaration.name.name, node.documentationComment!);
+          final String element = '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${declaration.name.name}';
+          results['field $element'] =
+              _processComment(element, node.documentationComment!);
         }
       }
     }
@@ -160,8 +162,9 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment != null &&
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name!.name.startsWith('_')) {
-      results['constructor ${node.name!.name}'] =
-          _processComment(node.name!.name, node.documentationComment!);
+      final String element = '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name!.name}';
+      results['constructor $element'] =
+          _processComment(element, node.documentationComment!);
     }
     return super.visitConstructorDeclaration(node);
   }
@@ -182,8 +185,9 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     if (node.documentationComment != null &&
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
-      results['method ${node.name.name}'] =
-          _processComment(node.name.name, node.documentationComment!);
+      final String element = '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name.name}';
+      results['method $element'] =
+          _processComment(element, node.documentationComment!);
     }
     return super.visitMethodDeclaration(node);
   }
@@ -193,9 +197,12 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     if (node.documentationComment != null &&
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
+      enclosingClass = node.name.name;
       results['class ${node.name.name}'] =
           _processComment(node.name.name, node.documentationComment!);
     }
-    return super.visitClassDeclaration(node);
+    final T? result = super.visitClassDeclaration(node);
+    enclosingClass = '';
+    return result;
   }
 }

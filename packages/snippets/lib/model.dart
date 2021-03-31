@@ -74,14 +74,18 @@ class TemplateInjection {
 abstract class CodeSample {
   CodeSample(
     this.args,
-    this.input,
-  )   : assert(input.isNotEmpty),
+    this.input, {
+    required this.index,
+  })  : assert(input.isNotEmpty),
         assert(args.isNotEmpty),
-        id = _createNameFromSource(args.first, input.first);
+        id = _createNameFromSource(args.first, input.first, index);
 
   final List<String> args;
   final String id;
   final List<SourceLine> input;
+
+  /// The index of this sample within the dardoc comment it came from.
+  final int index;
   String description = '';
   String get element => input.isEmpty ? '' : input.first.element ?? '';
   String output = '';
@@ -98,13 +102,13 @@ abstract class CodeSample {
 
   /// Creates a name for the snippets tool to use for the snippet ID from a
   /// filename and starting line number.
-  static String _createNameFromSource(String prefix, SourceLine start) {
+  static String _createNameFromSource(String prefix, SourceLine start, int index) {
     final List<String> components = path.split(start.file?.absolute.path ?? '');
     assert(components.contains('lib'));
     components.removeRange(0, components.lastIndexOf('lib') + 1);
     String sampleId = components.join('.');
     sampleId = path.basenameWithoutExtension(sampleId);
-    sampleId = '$prefix.$sampleId.${start.line}';
+    sampleId = '$prefix.$sampleId.$index';
     return sampleId;
   }
 
@@ -130,15 +134,16 @@ abstract class CodeSample {
 /// blocks for an entire file, since they are evaluated in the analysis tool in
 /// a single block.
 class SnippetSample extends CodeSample {
-  SnippetSample(List<SourceLine> input) : super(<String>['snippet'], input);
+  SnippetSample(List<SourceLine> input, {required int index})
+      : super(<String>['snippet'], input, index: index);
 
-  factory SnippetSample.combine(List<SnippetSample> sections) {
+  factory SnippetSample.combine(List<SnippetSample> sections, {required int index}) {
     final List<SourceLine> code =
         sections.expand((SnippetSample section) => section.input).toList();
-    return SnippetSample(code);
+    return SnippetSample(code, index:index);
   }
 
-  factory SnippetSample.fromStrings(SourceLine firstLine, List<String> code) {
+  factory SnippetSample.fromStrings(SourceLine firstLine, List<String> code, {required int index}) {
     final List<SourceLine> codeLines = <SourceLine>[];
     int startPos = firstLine.startChar;
     for (int i = 0; i < code.length; ++i) {
@@ -151,15 +156,15 @@ class SnippetSample extends CodeSample {
       );
       startPos += code[i].length + 1;
     }
-    return SnippetSample(codeLines);
+    return SnippetSample(codeLines, index: index);
   }
 
-  factory SnippetSample.surround(String prefix, List<SourceLine> code, String postfix) {
+  factory SnippetSample.surround(String prefix, List<SourceLine> code, String postfix, {required int index}) {
     return SnippetSample(<SourceLine>[
       if (prefix.isNotEmpty) SourceLine(prefix),
       ...code,
       if (postfix.isNotEmpty) SourceLine(postfix),
-    ]);
+    ], index: index);
   }
 
   @override
@@ -184,8 +189,9 @@ class ApplicationSample extends CodeSample {
     SourceLine start = const SourceLine(''),
     List<String> input = const <String>[],
     required List<String> args,
+    required int index,
   })   : assert(args.isNotEmpty),
-        super(args, _convertInput(input, start));
+        super(args, _convertInput(input, start), index: index);
 
   static List<SourceLine> _convertInput(List<String> input, SourceLine start) {
     int lineNumber = start.line;
@@ -220,8 +226,9 @@ class DartpadSample extends ApplicationSample {
     SourceLine start = const SourceLine(''),
     List<String> input = const <String>[],
     required List<String> args,
+    required int index,
   })   : assert(args.isNotEmpty),
-        super(start: start, input: input, args: args);
+        super(start: start, input: input, args: args, index: index);
 
   @override
   String get type => 'dartpad';

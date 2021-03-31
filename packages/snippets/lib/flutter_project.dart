@@ -30,10 +30,20 @@ class FlutterProject {
   final String? _name;
   final Directory? flutterRoot;
 
-  String get name => _name ?? 'sample_${sample.element.snakeCase}_${sample.start.line}';
+  String get name => _name ?? '${sample.type}_${sample.element.snakeCase.replaceAll('.', '_')}_${sample.index}';
   File get mainDart => location.childDirectory('lib').childFile('main.dart');
 
-  Future<bool> create({bool overwrite = false}) async {
+  Future<bool> restore() async {
+    // 1) Load up the modified main.dart, parse out the components.
+    // final String mainDartContents = await mainDart.readAsString();
+    // 2) Re-parse the original file to find the current char range for the
+    // original example.
+    // 3) Create a substitute example, and replace the char range with the new example.
+    // 4) Rewrite the original framework file.
+    return true;
+  }
+
+  Future<bool> export({bool overwrite = false}) async {
     if (await location.exists() && !overwrite) {
       throw SnippetException(
           'Project output location ${location.absolute.path} exists, refusing to overwrite.');

@@ -387,9 +387,16 @@ class SnippetGenerator {
           io.exit(1);
         }
         final String templateContents = _loadFileAsUtf8(templateFile);
+        final io.Directory flutterRoot = getFlutterRoot();
+        final String templateRelativePath =
+            templateFile.absolute.path.contains(flutterRoot.absolute.path)
+                ? path.relative(templateFile.absolute.path, from: flutterRoot.absolute.path)
+                : templateFile.absolute.path;
         String app = interpolateTemplate(
           snippetData,
-          addSectionMarkers ? '/// Template: ${templateFile.absolute.path}\n$templateContents' : templateContents,
+          addSectionMarkers
+              ? '/// Template: $templateRelativePath\n$templateContents'
+              : templateContents,
           sample.metadata,
           addSectionMarkers: addSectionMarkers,
         );
