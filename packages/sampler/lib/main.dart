@@ -63,7 +63,7 @@ ExpansionPanel createExpansionPanel(CodeSample sample, {bool isExpanded = false}
   return ExpansionPanel(
     headerBuilder: (BuildContext context, bool isExpanded) {
       return ListTile(
-        title: Text('${sample.start.element}: ${sample.id}'),
+        title: Text('${sample.start.element}${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line} (${sample.type})'),
         trailing: TextButton(
           child: const Text('SELECT'),
           onPressed: () {

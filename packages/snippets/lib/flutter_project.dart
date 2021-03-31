@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:file/local.dart';
 import 'package:file/file.dart';
@@ -36,6 +37,8 @@ class FlutterProject {
   String get name => _name ?? '${sample.type}_${sample.element.snakeCase.replaceAll('.', '_')}_${sample.index}';
   File get mainDart => location.childDirectory('lib').childFile('main.dart');
 
+  int _getIndent(String line) => line.length - line.trimLeft().length;
+
   Map<String, int> _findReplacementRangeAndIndents() {
     final File frameworkFile = sample.start.file!;
     final List<List<SourceLine>> frameworkComments = getFileComments(frameworkFile).where((List<SourceLine> lines) {
@@ -55,9 +58,7 @@ class FlutterProject {
     final int startRange = foundBlock.input.first.startChar;
     final int endRange = foundBlock.input.last.endChar;
     // find out much the first line in the comment was indented.
-    final RegExp indentRegexp = RegExp(r'^([ ]*).*$');
-    final RegExpMatch? indentMatch = indentRegexp.firstMatch(frameworkComments.first.first.text);
-    final int commentIndent = indentMatch?[1]?.length ?? 0;
+    final int commentIndent = _getIndent(frameworkComments.first.first.text);
     return <String, int>{'startRange': startRange, 'endRange': endRange, 'commentIndent': commentIndent};
   }
 
@@ -67,13 +68,12 @@ class FlutterProject {
     for (final String section in sectionOrder) {
       final String dartdocSection = section.replaceFirst(RegExp(r'code-?'), ' ').trimRight();
       final List<String> sectionContents = sections[section]!;
-      final int sectionIndent = sectionContents.first.length - sectionContents.first.trimLeft().length;
+      final int sectionIndent = _getIndent(sectionContents.first);
       if (section != 'description') {
         result.add('$commentMarker ```dart$dartdocSection');
       }
       result.addAll(sections[section]!.map<String>((String line) {
-        assert(line.substring(0, sectionIndent).trim().isEmpty);
-        line = line.substring(sectionIndent);
+        line = line.substring(math.min(math.min(sectionIndent, _getIndent(line)), line.length));
         return '$commentMarker $line';
       }));
       if (section != 'description') {
@@ -199,7 +199,7 @@ class FlutterProject {
     final File mainDart = location.childDirectory('lib').childFile('main.dart');
     await mainDart.writeAsString(sample.output);
 
-    // Rewrite the pubspec to include the right contstraints and point to the flutter root.
+    // Rewrite the pubspec to include the right constraints and point to the flutter root.
 
     final File pubspec = location.childFile('pubspec.yaml');
     final Version flutterVersion = getFlutterVersion();

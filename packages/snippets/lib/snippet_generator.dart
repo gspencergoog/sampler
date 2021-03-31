@@ -258,6 +258,7 @@ class SnippetGenerator {
       }
     }
     sample.parts = <TemplateInjection>[
+      // sample.element == '#preamble' ? 'examples-can-assume' :
       TemplateInjection('description', description),
       ...components,
     ];

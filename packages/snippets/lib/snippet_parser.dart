@@ -40,7 +40,7 @@ class SnippetDartdocParser {
     final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
     final List<SourceLine> preamble = parsePreamble(file);
     if (preamble.isNotEmpty) {
-      samples.add(SnippetSample(preamble, index: 0));
+      samples.insert(0, SnippetSample(preamble, index: 0));
     }
     for (final CodeSample sample in samples) {
       sample.metadata.addAll(<String, Object?>{
@@ -155,8 +155,8 @@ class SnippetDartdocParser {
             snippetCount++;
             break;
         }
-        samples.addAll(newSamples);
       }
+      samples.addAll(newSamples);
     }
 
     if (!silent) {

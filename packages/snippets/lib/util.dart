@@ -60,10 +60,15 @@ Version getDartSdkVersion(
       filesystem: filesystem)['dartSdkVersion'] as Version;
 }
 
+Map<String,dynamic>? _cachedFlutterInformation;
+
 Map<String, dynamic> getFlutterInformation(
     {Platform? platform,
     ProcessManager? processManager,
     FileSystem filesystem = const LocalFileSystem()}) {
+  if (_cachedFlutterInformation != null) {
+    return _cachedFlutterInformation!;
+  }
   final ProcessManager manager = processManager ?? const LocalProcessManager();
   final Platform resolvedPlatform = platform ?? const LocalPlatform();
   String flutterCommand;
@@ -108,6 +113,7 @@ Map<String, dynamic> getFlutterInformation(
   }
   info['dartSdkVersion'] =
       Version.parse(dartVersionRegex.namedGroup('detail') ?? dartVersionRegex.namedGroup('base')!);
+  _cachedFlutterInformation = info;
   return info;
 }
 
