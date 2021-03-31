@@ -46,9 +46,22 @@ class _DetailViewState extends State<DetailView> {
     });
   }
 
-  void _saveToFrameworkFile() {
+  void _saveToFrameworkFile(BuildContext context) {
     setState(() {
-      project = null;
+      if (project == null) {
+        return;
+      }
+      project!.restore().then((String error) {
+        if (error.isEmpty) {
+          return;
+        }
+        final ScaffoldMessengerState? scaffold = ScaffoldMessenger.maybeOf(context);
+        scaffold?.showSnackBar(
+          SnackBar(
+            content: Text(error),
+          ),
+        );
+      });
     });
   }
 
@@ -112,7 +125,7 @@ class _DetailViewState extends State<DetailView> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   TextButton(
-                      child: const Text('SAVE TO FRAMEWORK FILE'), onPressed: _saveToFrameworkFile),
+                      child: const Text('SAVE TO FRAMEWORK FILE'), onPressed: () => _saveToFrameworkFile(context)),
                   const Spacer(),
                   if (sample.start.file != null)
                     OutputLocation(

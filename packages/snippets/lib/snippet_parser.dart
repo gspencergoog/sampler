@@ -173,9 +173,8 @@ class SnippetDartdocParser {
     bool inSnippet = false;
     // Whether or not we're in a '```dart' segment.
     bool inDart = false;
-    final List<String> block = <String>[];
+    List<SourceLine> block = <SourceLine>[];
     List<String> snippetArgs = <String>[];
-    SourceLine startLine = const SourceLine('');
     final List<CodeSample> samples = <CodeSample>[];
 
     int index = 0;
@@ -187,40 +186,40 @@ class SnippetDartdocParser {
               file: line.file?.path, line: line.line);
         }
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
-          switch (snippetArgs.first) {
-            case 'snippet':
-              samples.add(
-                SnippetSample.fromStrings(startLine, block, index: index++),
-              );
-              break;
-            case 'sample':
-              samples.add(
-                ApplicationSample(
-                  start: startLine,
-                  input: block,
-                  args: snippetArgs,
-                  index: index++,
-                ),
-              );
-              break;
-            case 'dartpad':
-              samples.add(
-                DartpadSample(
-                  start: startLine,
-                  input: block,
-                  args: snippetArgs,
-                  index: index++,
-                ),
-              );
-              break;
-            default:
-              throw SnippetException('Unknown snippet type ${snippetArgs.first}');
+          if (block.isNotEmpty) {
+            switch (snippetArgs.first) {
+              case 'snippet':
+                samples.add(
+                  SnippetSample(block, index: index++),
+                );
+                break;
+              case 'sample':
+                samples.add(
+                  ApplicationSample(
+                    input: block,
+                    args: snippetArgs,
+                    index: index++,
+                  ),
+                );
+                break;
+              case 'dartpad':
+                samples.add(
+                  DartpadSample(
+                    input: block,
+                    args: snippetArgs,
+                    index: index++,
+                  ),
+                );
+                break;
+              default:
+                throw SnippetException('Unknown snippet type ${snippetArgs.first}');
+            }
           }
           snippetArgs = <String>[];
-          block.clear();
+          block = <SourceLine>[];
           inSnippet = false;
         } else {
-          block.add(line.text.replaceFirst(RegExp(r'\s*/// ?'), ''));
+          block.add(line.copyWith(text: line.text.replaceFirst(RegExp(r'\s*/// ?'), '')));
         }
       } else {
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
@@ -232,9 +231,9 @@ class SnippetDartdocParser {
         if (inDart) {
           if (_codeBlockEndRegex.hasMatch(trimmedLine)) {
             inDart = false;
-            block.clear();
+            block = <SourceLine>[];
           } else if (trimmedLine == _dartDocPrefix) {
-            block.add('');
+            block.add(line.copyWith(text: ''));
           } else {
             final int index = line.text.indexOf(_dartDocPrefixWithSpace);
             if (index < 0) {
@@ -244,12 +243,10 @@ class SnippetDartdocParser {
                 line: line.line,
               );
             }
-            block.add(line.text.substring(index + 4));
+            block.add(line.copyWith(text: line.text.substring(index + 4)));
           }
         } else if (_codeBlockStartRegex.hasMatch(trimmedLine)) {
           assert(block.isEmpty);
-          startLine = line.copyWith(
-              indent: line.text.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length);
           inDart = true;
         }
       }
@@ -261,9 +258,6 @@ class SnippetDartdocParser {
                   sampleMatch.namedGroup('type') == 'sample' ||
                   sampleMatch.namedGroup('type') == 'dartpad');
           if (inSnippet) {
-            startLine = line.copyWith(
-              indent: line.text.indexOf(_dartDocPrefixWithSpace) + _dartDocPrefixWithSpace.length,
-            );
             if (sampleMatch.namedGroup('args') != null) {
               // There are arguments to the snippet tool to keep track of.
               snippetArgs = <String>[

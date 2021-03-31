@@ -186,29 +186,11 @@ class SnippetSample extends CodeSample {
 /// in the source file.
 class ApplicationSample extends CodeSample {
   ApplicationSample({
-    SourceLine start = const SourceLine(''),
-    List<String> input = const <String>[],
+    List<SourceLine> input = const <SourceLine>[],
     required List<String> args,
     required int index,
   })   : assert(args.isNotEmpty),
-        super(args, _convertInput(input, start), index: index);
-
-  static List<SourceLine> _convertInput(List<String> input, SourceLine start) {
-    int lineNumber = start.line;
-    int startChar = start.startChar;
-    return input.map<SourceLine>(
-      (String line) {
-        final SourceLine result = start.copyWith(
-          text: line,
-          line: lineNumber,
-          startChar: startChar,
-        );
-        lineNumber++;
-        startChar += line.length + 1;
-        return result;
-      },
-    ).toList();
-  }
+        super(args, input, index: index);
 
   @override
   String get type => 'sample';
@@ -223,12 +205,11 @@ class ApplicationSample extends CodeSample {
 /// the source file.
 class DartpadSample extends ApplicationSample {
   DartpadSample({
-    SourceLine start = const SourceLine(''),
-    List<String> input = const <String>[],
+    List<SourceLine> input = const <SourceLine>[],
     required List<String> args,
     required int index,
   })   : assert(args.isNotEmpty),
-        super(start: start, input: input, args: args, index: index);
+        super(input: input, args: args, index: index);
 
   @override
   String get type => 'dartpad';

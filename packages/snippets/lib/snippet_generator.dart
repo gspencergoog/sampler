@@ -49,66 +49,6 @@ class SnippetGenerator {
     return templateFile.existsSync() ? templateFile : null;
   }
 
-  /// Injects the [injections] into the [template], and turning the
-  /// "description" injection into a comment. Only used for
-  /// [SampleType.sample] snippets.
-  String interpolateTemplate(
-    List<TemplateInjection> injections,
-    String template,
-    Map<String, Object?> metadata, {
-    bool addSectionMarkers = false,
-  }) {
-    final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
-    String sectionArrows(String name, {bool start = true}) {
-      const int markerArrows = 8;
-      final String arrows = (start ? '⯆' : '⯅') * markerArrows;
-      final String marker = '//* $arrows $name $arrows (do not modify or remove section marker)';
-      return '${start ? '\n//*${'*' * marker.length}\n' : '\n'}'
-          '$marker'
-          '${!start ? '\n//*${'*' * marker.length}\n' : '\n'}';
-    }
-
-    String wrapSectionMarker(Iterable<String> contents, {required String name}) {
-      return <String>[
-        if (addSectionMarkers) sectionArrows(name, start: true),
-        ...contents,
-        if (addSectionMarkers) sectionArrows(name, start: false),
-      ].join('\n').trim();
-    }
-
-    return template.replaceAllMapped(moustacheRegExp, (Match match) {
-      if (match[1] == 'description') {
-        // Place the description into a comment.
-        final List<String> description = injections
-            .firstWhere((TemplateInjection tuple) => tuple.name == match[1])
-            .contents
-            .map<String>((SourceLine line) => '// ${line.text}')
-            .toList();
-        // Remove any leading/trailing empty comment lines.
-        // We don't want to remove ALL empty comment lines, only the ones at the
-        // beginning and the end.
-        while (description.isNotEmpty && description.last == '// ') {
-          description.removeLast();
-        }
-        while (description.isNotEmpty && description.first == '// ') {
-          description.removeAt(0);
-        }
-        return wrapSectionMarker(description, name: 'description');
-      } else {
-        final int componentIndex =
-            injections.indexWhere((TemplateInjection injection) => injection.name == match[1]);
-        if (componentIndex == -1) {
-          // If the match isn't found in the injections, then just remove the
-          // mustache reference, since we want to allow the sections to be
-          // "optional" in the input: users shouldn't be forced to add an empty
-          // "```dart preamble" section if that section would be empty.
-          return (metadata[match[1]] ?? '').toString();
-        }
-        return wrapSectionMarker(injections[componentIndex].stringContents, name: match[1]!);
-      }
-    }).trim();
-  }
-
   /// Interpolates the [injections] into an HTML skeleton file.
   ///
   /// Similar to interpolateTemplate, but we are only looking for `code-`
