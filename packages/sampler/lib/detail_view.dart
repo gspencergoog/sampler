@@ -22,14 +22,22 @@ class DetailView extends StatefulWidget {
 
 class _DetailViewState extends State<DetailView> {
   FlutterProject? project;
+  bool exporting = false;
 
   void _exportSample() {
     setState(() {
-      final Directory outputLocation =
-          Model.instance.filesystem.systemTempDirectory.createTempSync('flutter_sample.');
-      project = FlutterProject(Model.instance.workingSample!,
-          location: outputLocation, flutterRoot: Model.instance.flutterRoot);
-      project!.create(overwrite: true);
+      exporting = true;
+      if (project == null) {
+        final Directory outputLocation =
+        Model.instance.filesystem.systemTempDirectory.createTempSync('flutter_sample.');
+        project = FlutterProject(Model.instance.workingSample!,
+            location: outputLocation, flutterRoot: Model.instance.flutterRoot);
+      }
+      project!.create(overwrite: true).then<void>((bool success) {
+        setState(() {
+          exporting = false;
+        });
+      });
     });
   }
 
@@ -54,50 +62,75 @@ class _DetailViewState extends State<DetailView> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: ListView(
-          shrinkWrap: true,
+        child: Column(
           children: <Widget>[
             DataLabel(label: 'Type of sample:', data: sample.type),
-            DataLabel(label: 'Element sample is attached to:', data: sample.element),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            DataLabel(label: 'Sample is attached to:', data: '${sample.element} starting at line ${sample.start.line}'),
+            Stack(
+              alignment: Alignment.center,
               children: <Widget>[
-                TextButton(child: const Text('EXPORT SAMPLE'), onPressed: _exportSample),
-                const Spacer(),
-                if (project?.location != null) OutputLocation(location: project!.location),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                TextButton(
-                    child: const Text('SAVE TO FRAMEWORK FILE'), onPressed: _saveToFrameworkFile),
-                const Spacer(),
-                if (sample.start.file != null)
-                  OutputLocation(location: sample.start.file!.parent, file: sample.start.file!),
-              ],
-            ),
-            ListTile(
-              title: HighlightView(
-                // The original code to be highlighted
-                sample.output,
-
-                // Specify language
-                // It is recommended to give it a value for performance
-                language: 'dart',
-
-                // Specify highlight theme
-                // All available themes are listed in `themes` folder
-                theme: githubTheme,
-
-                // Specify padding
-                padding: const EdgeInsets.all(12),
-
-                // Specify text style
-                textStyle: const TextStyle(
-                  fontFamily: 'Fira Code',
-                  fontSize: 12,
+                Container(
+                  height: 100,
+                  margin: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: const ShapeDecoration(
+                      color: Colors.black12,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10.0)))),
+                  child: Row(
+                    mainAxisAlignment: project == null
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      TextButton(
+                          child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
+                          onPressed: _exportSample),
+                      if (project != null && !exporting) OutputLocation(location: project!.location),
+                    ],
+                  ),
                 ),
+                if (exporting) const CircularProgressIndicator.adaptive(value: null),
+              ],
+            ),
+            Container(
+              height: 100,
+              margin: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(8.0),
+              decoration: const ShapeDecoration(
+                  color: Colors.black12,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(10.0)))),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  TextButton(
+                      child: const Text('SAVE TO FRAMEWORK FILE'), onPressed: _saveToFrameworkFile),
+                  const Spacer(),
+                  if (sample.start.file != null)
+                    OutputLocation(location: sample.start.file!.parent, file: sample.start.file!),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                shrinkWrap: true,
+                children: <Widget>[
+                  ListTile(
+                    title: HighlightView(
+                      // The original code to be highlighted
+                      sample.output,
+                      language: 'dart',
+                      tabSize: 2,
+                      theme: githubTheme,
+                      padding: const EdgeInsets.all(12),
+                      textStyle: const TextStyle(
+                        fontFamily: 'Fira Code',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

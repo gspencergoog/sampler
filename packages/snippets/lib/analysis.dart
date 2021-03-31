@@ -71,7 +71,7 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     final IntervalTree<_LineNumber<int>> itree = IntervalTree<_LineNumber<int>>();
     for (int i = 0; i < contents.length; ++i) {
       if (contents[i] == '\n') {
-        itree.add(_LineNumberInterval(startRange, i, lineNumber));
+        itree.add(_LineNumberInterval(startRange, i, lineNumber + 1));
         lineNumber++;
         startRange = i + 1;
       }
@@ -83,10 +83,10 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
           ..add(_LineNumberInterval(line.startChar, line.endChar, -1));
         final IntervalTree<_LineNumber<int>> intersection = itree.intersection(resultTree);
         if (intersection.isNotEmpty) {
-          final int lineNumber = intersection.single.start.line == -1
+          final int intervalLine = intersection.single.start.line == -1
               ? intersection.single.end.line
               : intersection.single.start.line;
-          newLines.add(line.copyWith(line: lineNumber));
+          newLines.add(line.copyWith(line: intervalLine));
         } else {
           newLines.add(line);
         }

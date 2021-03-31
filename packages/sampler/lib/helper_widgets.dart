@@ -75,45 +75,87 @@ class OutputLocation extends StatelessWidget {
     final TextStyle labelStyle = Theme.of(context).textTheme.bodyText2!;
     return DefaultTextStyle(
       style: labelStyle,
-      child: Container(
-        color: Colors.grey.shade300,
+      child: Padding(
         padding: const EdgeInsets.all(4.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-              child: Text('$label${label.isNotEmpty ? ' ' : ''}${file?.path ?? location.path}'),
-            ),
-            Padding(
-              padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-              child: IconButton(
-                  tooltip: 'Copy path to clipboard',
-                  icon: const Icon(Icons.copy),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: location.absolute.path));
-                  }),
-            ),
-            Padding(
-              padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-              child: TextButton(
-                  child: Text('OPEN IN $_fileBrowserName'),
-                  onPressed: () {
-                    openFileBrowser(file?.parent ?? location);
-                  }),
-            ),
-            for (final IdeType type in IdeType.values)
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
               Padding(
                 padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-                child: TextButton(
-                    child: Text('OPEN IN ${getIdeName(type).toUpperCase()}'),
+                child: Text('$label${label.isNotEmpty ? ' ' : ''}${file?.path ?? location.path}'),
+              ),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
+                child: IconButton(
+                    tooltip: 'Copy path to clipboard',
+                    icon: const Icon(Icons.copy),
                     onPressed: () {
-                      openInIde(type, file ?? location);
+                      Clipboard.setData(ClipboardData(text: location.absolute.path));
                     }),
               ),
+            ]),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
+                  child: TextButton(
+                      child: Text('OPEN IN $_fileBrowserName'),
+                      onPressed: () {
+                        openFileBrowser(file?.parent ?? location);
+                      }),
+                ),
+                for (final IdeType type in IdeType.values)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
+                    child: TextButton(
+                        child: Text('OPEN IN ${getIdeName(type).toUpperCase()}'),
+                        onPressed: () {
+                          openInIde(type, file ?? location);
+                        }),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// The default Material-style Autocomplete text field.
+class AutocompleteField extends StatelessWidget {
+  const AutocompleteField({
+    Key? key,
+    required this.focusNode,
+    required this.textEditingController,
+    required this.onFieldSubmitted,
+    this.trailing,
+  }) : super(key: key);
+
+  final FocusNode focusNode;
+
+  final VoidCallback onFieldSubmitted;
+
+  final TextEditingController textEditingController;
+
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: TextFormField(
+            controller: textEditingController,
+            focusNode: focusNode,
+            onFieldSubmitted: (String value) {
+              onFieldSubmitted();
+            },
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ],
     );
   }
 }

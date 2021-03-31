@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:snippets/snippets.dart';
 
 import 'detail_view.dart';
+import 'helper_widgets.dart';
 import 'model.dart';
 
 const FileSystem fs = LocalFileSystem();
@@ -147,6 +148,25 @@ class _SamplerState extends State<Sampler> {
         .where((File file) => file.basename.toLowerCase().contains(value.text.toLowerCase()));
   }
 
+  Widget _buildFileField(BuildContext context, TextEditingController textEditingController,
+      FocusNode focusNode, VoidCallback onFieldSubmitted) {
+    return AutocompleteField(
+      focusNode: focusNode,
+      textEditingController: textEditingController,
+      onFieldSubmitted: onFieldSubmitted,
+      trailing: Model.instance.workingFile != null
+          ? IconButton(
+              icon: const Icon(Icons.highlight_remove),
+              onPressed: () {
+                setState(() {
+                  textEditingController.clear();
+                  Model.instance.setWorkingFile(null);
+                });
+              })
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     List<ExpansionPanel> panels = const <ExpansionPanel>[];
@@ -195,6 +215,7 @@ class _SamplerState extends State<Sampler> {
                         ),
                         Expanded(
                             child: Autocomplete<File>(
+                          fieldViewBuilder: _buildFileField,
                           optionsBuilder: _fileOptions,
                           displayStringForOption: (File file) => file.path,
                           onSelected: (File file) {

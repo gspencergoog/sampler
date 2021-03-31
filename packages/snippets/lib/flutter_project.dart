@@ -91,6 +91,7 @@ environment:
   flutter: ">=$flutterVersion <3.0.0"
 
 dependencies:
+  cupertino_icons: 1.0.2
   flutter:
     sdk: flutter
     
