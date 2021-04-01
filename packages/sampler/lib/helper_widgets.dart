@@ -74,6 +74,7 @@ class OutputLocation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextStyle labelStyle = Theme.of(context).textTheme.bodyText2!;
+    final String path = file?.path ?? location.absolute.path;
     return DefaultTextStyle(
       style: labelStyle,
       child: Padding(
@@ -83,7 +84,7 @@ class OutputLocation extends StatelessWidget {
             Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
               Padding(
                 padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-                child: Text('$label${label.isNotEmpty ? ' ' : ''}${file?.path ?? location.path}'),
+                child: Text('$label${label.isNotEmpty ? ' ' : ''}$path'),
               ),
               Padding(
                 padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
@@ -91,7 +92,7 @@ class OutputLocation extends StatelessWidget {
                     tooltip: 'Copy path to clipboard',
                     icon: const Icon(Icons.copy),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: location.absolute.path));
+                      Clipboard.setData(ClipboardData(text: path));
                     }),
               ),
             ]),

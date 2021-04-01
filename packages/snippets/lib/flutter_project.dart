@@ -10,7 +10,6 @@ import 'package:file/file.dart';
 import 'package:process/process.dart';
 import 'package:recase/recase.dart';
 import 'package:pub_semver/pub_semver.dart';
-import 'package:snippets/snippet_generator.dart';
 
 import 'analysis.dart';
 import 'model.dart';
@@ -37,9 +36,7 @@ class FlutterProject {
   String get name => _name ?? '${sample.type}_${sample.element.snakeCase.replaceAll('.', '_')}_${sample.index}';
   File get mainDart => location.childDirectory('lib').childFile('main.dart');
 
-  int _getIndent(String line) => line.length - line.trimLeft().length;
-
-  Map<String, int> _findReplacementRangeAndIndents() {
+  Future<Map<String, int>> _findReplacementRangeAndIndents() async {
     final File frameworkFile = sample.start.file!;
     final List<List<SourceLine>> frameworkComments = getFileComments(frameworkFile).where((List<SourceLine> lines) {
       return lines.first.element == sample.element;
@@ -57,23 +54,35 @@ class FlutterProject {
     final CodeSample foundBlock = foundBlocks.first;
     final int startRange = foundBlock.input.first.startChar;
     final int endRange = foundBlock.input.last.endChar;
-    // find out much the first line in the comment was indented.
-    final int commentIndent = _getIndent(frameworkComments.first.first.text);
-    return <String, int>{'startRange': startRange, 'endRange': endRange, 'commentIndent': commentIndent};
+
+    // Back up from the start of range, and find the first newline.
+    final String contents = await frameworkFile.readAsString();
+    int cursor = startRange;
+    while (cursor >= 0 && contents[cursor] != '\n') {
+      cursor--;
+    }
+    final int startFirstLine = contents[cursor] == '\n' ? cursor + 1 : cursor;
+    // Move forward from the start of range, and find the first newline.
+    cursor = startRange;
+    while (cursor < contents.length && contents[cursor] != '\n') {
+      cursor++;
+    }
+    final String firstLine = contents.substring(startFirstLine, cursor);
+    return <String, int>{'startRange': startFirstLine, 'endRange': endRange, 'firstIndent': getIndent(firstLine)};
   }
 
-  String _buildSampleReplacement(Map<String, List<String>> sections, List<String> sectionOrder, Map<String, int> indents) {
-    final String commentMarker = '${' ' * indents['commentIndent']!}///';
+  String _buildSampleReplacement(Map<String, List<String>> sections, List<String> sectionOrder, int indent) {
+    final String commentMarker = '${' ' * indent}///';
     final List<String> result = <String>[commentMarker]; // add a blank line at the beginning.
     for (final String section in sectionOrder) {
       final String dartdocSection = section.replaceFirst(RegExp(r'code-?'), ' ').trimRight();
       final List<String> sectionContents = sections[section]!;
-      final int sectionIndent = _getIndent(sectionContents.first);
+      final int sectionIndent = getIndent(sectionContents.first);
       if (section != 'description') {
         result.add('$commentMarker ```dart$dartdocSection');
       }
       result.addAll(sections[section]!.map<String>((String line) {
-        line = line.substring(math.min(math.min(sectionIndent, _getIndent(line)), line.length));
+        line = line.substring(math.min(math.min(sectionIndent, getIndent(line)), line.length));
         return '$commentMarker $line';
       }));
       if (section != 'description') {
@@ -143,13 +152,16 @@ class FlutterProject {
 
       // Re-parse the original file to find the current char range for the
       // original example.
-      final Map<String, int> rangesAndIndents = _findReplacementRangeAndIndents();
-
-      // 3) Create a substitute example, and replace the char range with the new example.
-      final String replacement = _buildSampleReplacement(sections, sectionOrder, rangesAndIndents);
-      // 4) Rewrite the original framework file.
+      final Map<String, int> rangesAndIndents = await _findReplacementRangeAndIndents();
       final File frameworkFile = sample.start.file!;
       String frameworkContents = await frameworkFile.readAsString();
+      print('Ranges: $rangesAndIndents');
+      print('Start char: ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!-1)} [${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!+1)}');
+      print('End char: ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!-1)} [${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!+1)}');
+
+      // 3) Create a substitute example, and replace the char range with the new example.
+      final String replacement = _buildSampleReplacement(sections, sectionOrder, rangesAndIndents['firstIndent']!);
+      // 4) Rewrite the original framework file.
       frameworkContents = frameworkContents.replaceRange(rangesAndIndents['startRange']!, rangesAndIndents['endRange']!, replacement);
       await frameworkFile.writeAsString(frameworkContents);
     } on SnippetException catch (e) {

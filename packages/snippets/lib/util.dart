@@ -30,6 +30,8 @@ class SnippetException implements Exception {
   }
 }
 
+int getIndent(String line) => line.length - line.trimLeft().length;
+
 Directory getFlutterRoot(
     {Platform? platform,
     ProcessManager? processManager,
