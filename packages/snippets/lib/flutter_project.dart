@@ -106,7 +106,7 @@ class FlutterProject {
     for (String line in mainDartLines) {
       final RegExpMatch? match = sectionMarkerRe.firstMatch(line);
       if (match != null) {
-        if (match.namedGroup('direction')! == '⯆') {
+        if (match.namedGroup('direction')! == '\u25bc' /* ▼ */) {
           // Start of section, initialize it.
           currentSection = match.namedGroup('name')!;
           sections[currentSection] ??= <String>[];

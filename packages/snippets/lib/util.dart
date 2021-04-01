@@ -131,7 +131,7 @@ String interpolateTemplate(
   final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
   String sectionArrows(String name, {bool start = true}) {
     const int markerArrows = 8;
-    final String arrows = (start ? '⯆' : '⯅') * markerArrows;
+    final String arrows = (start ? '\u25bc' /* ▼ */ : '\u25b2' /* ▲ */) * markerArrows;
     final String marker = '//* $arrows $name $arrows (do not modify or remove section marker)';
     return '${start ? '\n//*${'*' * marker.length}\n' : '\n'}'
         '$marker'
