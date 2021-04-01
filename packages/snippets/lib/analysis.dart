@@ -11,8 +11,8 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:file/file.dart';
 import 'package:pub_semver/pub_semver.dart';
 
+import 'data_types.dart';
 import 'interval_tree.dart';
-import 'model.dart';
 
 List<List<SourceLine>> getFileComments(File file) {
   final ParseStringResult parseResult = parseFile(

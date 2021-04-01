@@ -10,7 +10,7 @@ import 'package:process/process.dart' show ProcessManager, LocalProcessManager;
 import 'package:platform/platform.dart' show LocalPlatform, Platform;
 import 'package:pub_semver/pub_semver.dart';
 
-import 'model.dart';
+import 'data_types.dart';
 
 class SnippetException implements Exception {
   SnippetException(this.message, {this.file, this.line});
@@ -119,9 +119,17 @@ Map<String, dynamic> getFlutterInformation(
   return info;
 }
 
+String sectionArrows(String name, {bool start = true}) {
+  const int markerArrows = 8;
+  final String arrows = (start ? '\u25bc' /* ▼ */ : '\u25b2' /* ▲ */) * markerArrows;
+  final String marker = '//* $arrows $name $arrows (do not modify or remove section marker)';
+  return '${start ? '\n//*${'*' * marker.length}\n' : '\n'}'
+      '$marker'
+      '${!start ? '\n//*${'*' * marker.length}\n' : '\n'}';
+}
+
 /// Injects the [injections] into the [template], and turning the
-/// "description" injection into a comment. Only used for
-/// [SampleType.sample] snippets.
+/// "description" injection into a comment.
 String interpolateTemplate(
   List<TemplateInjection> injections,
   String template,
@@ -129,15 +137,6 @@ String interpolateTemplate(
   bool addSectionMarkers = false,
 }) {
   final RegExp moustacheRegExp = RegExp('{{([^}]+)}}');
-  String sectionArrows(String name, {bool start = true}) {
-    const int markerArrows = 8;
-    final String arrows = (start ? '\u25bc' /* ▼ */ : '\u25b2' /* ▲ */) * markerArrows;
-    final String marker = '//* $arrows $name $arrows (do not modify or remove section marker)';
-    return '${start ? '\n//*${'*' * marker.length}\n' : '\n'}'
-        '$marker'
-        '${!start ? '\n//*${'*' * marker.length}\n' : '\n'}';
-  }
-
   String wrapSectionMarker(Iterable<String> contents, {required String name}) {
     return <String>[
       if (addSectionMarkers) sectionArrows(name, start: true),

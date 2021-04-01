@@ -14,7 +14,7 @@ import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as path;
 
 import 'configuration.dart';
-import 'model.dart';
+import 'data_types.dart';
 import 'util.dart';
 
 /// Generates the snippet HTML, as well as saving the output snippet main to
@@ -112,31 +112,19 @@ class SnippetGenerator {
     });
   }
 
-  /// Consolidates all of the snippets and the preamble into one snippet, in
+  /// Consolidates all of the snippets and the assumptions into one snippet, in
   /// order to create a compilable result.
-  Iterable<SourceLine> consolidateSnippets(List<CodeSample> samples) {
-    final List<CodeSample> preambles =
-        samples.whereType<SnippetSample>().where((SnippetSample sample) {
-      final Iterable<SourceLine> associatedWithFile =
-          sample.input.where((SourceLine line) => line.hasFile);
-      if (associatedWithFile.isEmpty) {
-        return false;
-      }
-      return associatedWithFile.first.element == '#preamble';
-    }).toList();
-    assert(preambles.length < 2);
+  Iterable<SourceLine> consolidateSnippets(List<CodeSample> samples, {bool addMarkers = false}) {
+    if (samples.isEmpty) {
+      return <SourceLine>[];
+    }
+    final Iterable<SnippetSample> snippets = samples.whereType<SnippetSample>();
     final List<SourceLine> snippetLines = <SourceLine>[
-      ...preambles.expand((CodeSample sample) => sample.input),
+      ...snippets.first.assumptions,
     ];
-    final Iterable<SnippetSample> snippets = samples
-        .whereType<SnippetSample>()
-        .where((SnippetSample sample) => !preambles.contains(sample));
     for (final SnippetSample sample in snippets) {
       parseInput(sample);
       snippetLines.addAll(_processBlocks(sample));
-    }
-    if (snippetLines.isEmpty) {
-      return <SourceLine>[];
     }
     return snippetLines;
   }
@@ -258,8 +246,8 @@ class SnippetGenerator {
       }
     }
     sample.parts = <TemplateInjection>[
-      // sample.element == '#preamble' ? 'examples-can-assume' :
       TemplateInjection('description', description),
+      if (sample is SnippetSample) TemplateInjection('#assumptions', sample.assumptions),
       ...components,
     ];
     return sample.parts;
@@ -308,6 +296,7 @@ class SnippetGenerator {
     CodeSample sample, {
     File? output,
     bool addSectionMarkers = false,
+    bool includeAssumptions = false,
   }) {
     configuration.createOutputDirectoryIfNeeded();
 
@@ -330,9 +319,9 @@ class SnippetGenerator {
         final String templateContents = _loadFileAsUtf8(templateFile);
         final io.Directory flutterRoot = getFlutterRoot();
         final String templateRelativePath =
-            templateFile.absolute.path.contains(flutterRoot.absolute.path)
-                ? path.relative(templateFile.absolute.path, from: flutterRoot.absolute.path)
-                : templateFile.absolute.path;
+        templateFile.absolute.path.contains(flutterRoot.absolute.path)
+            ? path.relative(templateFile.absolute.path, from: flutterRoot.absolute.path)
+            : templateFile.absolute.path;
         String app = interpolateTemplate(
           snippetData,
           addSectionMarkers
@@ -350,25 +339,33 @@ class SnippetGenerator {
         }
         sample.output = app;
         final int descriptionIndex =
-            snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
+        snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
         final String descriptionString =
-            descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
+        descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
         sample.description = descriptionString;
         break;
       case SnippetSample:
-        const String templateContents = '{{description}}\n{{code}}';
-        final String app = interpolateTemplate(
-          snippetData,
-          templateContents,
-          sample.metadata,
-          addSectionMarkers: addSectionMarkers,
-        );
-        sample.output = app;
-        final int descriptionIndex =
-            snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
-        final String descriptionString =
-            descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
-        sample.description = descriptionString;
+        if (sample is SnippetSample) { // So Dart does correct type inference.
+          String templateContents;
+          final Map<String, Object?> metadata = Map<String, Object?>.from(sample.metadata);
+          if (includeAssumptions) {
+            templateContents = '${headers.map<String>((SourceLine line) => line.text).join('\n')}\n{{#assumptions}}\n{{description}}\n{{code}}';
+          } else {
+            templateContents = '{{description}}\n{{code}}';
+          }
+          final String app = interpolateTemplate(
+            snippetData,
+            templateContents,
+            metadata,
+            addSectionMarkers: addSectionMarkers,
+          );
+          sample.output = app;
+          final int descriptionIndex =
+          snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
+          final String descriptionString =
+          descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
+          sample.description = descriptionString;
+        }
         break;
     }
     sample.metadata['description'] = sample.description;
@@ -381,5 +378,37 @@ class SnippetGenerator {
       metadataFile.writeAsStringSync(jsonEncoder.convert(sample.metadata));
     }
     return sample.output;
+  }
+
+  /// Computes the headers needed for each snippet file.
+  List<SourceLine> get headers {
+    return _headers ??= <String>[
+      '// generated code',
+      '// ignore_for_file: unused_import',
+      '// ignore_for_file: unused_element',
+      '// ignore_for_file: unused_local_variable',
+      "import 'dart:async';",
+      "import 'dart:convert';",
+      "import 'dart:math' as math;",
+      "import 'dart:typed_data';",
+      "import 'dart:ui' as ui;",
+      "import 'package:flutter_test/flutter_test.dart';",
+      for (final File file
+      in _listDartFiles(getFlutterRoot().childDirectory('packages').childDirectory('flutter').childDirectory('lib')))...<String>[
+        '',
+        '// ${file.path}',
+        "import 'package:flutter/${path.basename(file.path)}';",
+      ],
+    ].map<SourceLine>((String code) => SourceLine(code)).toList();
+  }
+  List<SourceLine>? _headers;
+
+  static List<File> _listDartFiles(Directory directory,
+      {bool recursive = false}) {
+    return directory
+        .listSync(recursive: recursive, followLinks: false)
+        .whereType<File>()
+        .where((File file) => path.extension(file.path) == '.dart')
+        .toList();
   }
 }

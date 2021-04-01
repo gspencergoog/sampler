@@ -12,7 +12,7 @@ import 'package:recase/recase.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 import 'analysis.dart';
-import 'model.dart';
+import 'data_types.dart';
 import 'snippet_parser.dart';
 import 'util.dart';
 
@@ -230,6 +230,8 @@ environment:
 dependencies:
   cupertino_icons: 1.0.2
   flutter:
+    sdk: flutter
+  flutter_test:
     sdk: flutter
     
 flutter:

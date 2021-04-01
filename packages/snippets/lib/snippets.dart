@@ -4,8 +4,8 @@
 
 export 'analysis.dart';
 export 'configuration.dart';
+export 'data_types.dart';
 export 'flutter_project.dart';
-export 'model.dart';
 export 'snippet_generator.dart';
 export 'snippet_parser.dart';
 export 'util.dart';

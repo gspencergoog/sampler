@@ -5,7 +5,7 @@
 import 'package:file/file.dart';
 
 import 'analysis.dart';
-import 'model.dart';
+import 'data_types.dart';
 import 'util.dart';
 
 /// Parses [CodeSample]s from the source file given to [parse], or from
@@ -38,11 +38,11 @@ class SnippetDartdocParser {
     bool silent = false,
   }) {
     final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
-    final List<SourceLine> preamble = parsePreamble(file);
-    if (preamble.isNotEmpty) {
-      samples.insert(0, SnippetSample(preamble, index: 0));
-    }
+    final List<SourceLine> assumptions = parseAssumptions(file);
     for (final CodeSample sample in samples) {
+      if (sample is SnippetSample) {
+        sample.assumptions = assumptions;
+      }
       sample.metadata.addAll(<String, Object?>{
         'id': sample.id,
         'element': sample.element,
@@ -94,7 +94,7 @@ class SnippetDartdocParser {
     return samples;
   }
 
-  List<SourceLine> parsePreamble(File file) {
+  List<SourceLine> parseAssumptions(File file) {
     // Whether or not we're in the file-wide preamble section ("Examples can assume").
     bool inPreamble = false;
     final List<SourceLine> preamble = <SourceLine>[];
@@ -121,7 +121,7 @@ class SnippetDartdocParser {
           line.substring(3),
           startChar: charPosition,
           endChar: charPosition + line.length + 1,
-          element: '#preamble',
+          element: '#assumptions',
           file: file,
           line: lineNumber,
         ));

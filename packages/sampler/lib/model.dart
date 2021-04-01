@@ -76,7 +76,7 @@ class Model extends ChangeNotifier {
     _samples = _dartdocParser
         .parse(filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path)));
     for (final CodeSample sample in samples!) {
-      _snippetGenerator.generateCode(sample, addSectionMarkers: true);
+      _snippetGenerator.generateCode(sample, addSectionMarkers: true, includeAssumptions: true);
     }
     print('Loaded ${samples!.length} samples from ${_workingFile!.path}');
     notifyListeners();

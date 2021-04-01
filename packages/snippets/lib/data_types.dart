@@ -135,7 +135,7 @@ abstract class CodeSample {
 /// a single block.
 class SnippetSample extends CodeSample {
   SnippetSample(List<SourceLine> input, {required int index})
-      : super(<String>['snippet'], input, index: index);
+      : assumptions = <SourceLine>[], super(<String>['snippet'], input, index: index);
 
   factory SnippetSample.combine(List<SnippetSample> sections, {required int index}) {
     final List<SourceLine> code =
@@ -166,6 +166,8 @@ class SnippetSample extends CodeSample {
       if (postfix.isNotEmpty) SourceLine(postfix),
     ], index: index);
   }
+
+  List<SourceLine> assumptions;
 
   @override
   String get template => '';
