@@ -6,8 +6,7 @@
 # Fast fail the script on failures.
 set -e
 
-# This script checks to make sure that each of the plugins *could* be published.
-# It doesn't actually publish anything.
+# This script checks to make sure that everything is formatted correctly.
 
 unset CDPATH
 
@@ -47,13 +46,13 @@ function fix_formatting() {
   format "$dir" "$@" -w
 }
 
-cd "$REPO_DIR/packages"
 fix=0
 if [[ "$1" == "--fix" ]]; then
   shift
   fix=1
 fi
 
+cd "$REPO_DIR/packages"
 for dir in $(find * -maxdepth 0 -type d); do
   if [[ $fix == 1 ]]; then
     fix_formatting "$dir" "$@"
