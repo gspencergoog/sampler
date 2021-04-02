@@ -103,5 +103,23 @@ void openInIde(IdeType type, FileSystemEntity location,
           break;
       }
       break;
+    case 'windows':
+      switch (type) {
+        case IdeType.idea:
+          processManager.run(<String>[
+            'idea64.exe',
+            if (startLine != 0) '${location.absolute.path}:$startLine',
+            if (startLine == 0) location.absolute.path,
+          ], runInShell: true);
+          break;
+        case IdeType.vscode:
+          processManager.run(<String>[
+            'code',
+            '--goto',
+            '${location.absolute.path}:$startLine',
+          ], runInShell: true);
+          break;
+      }
+      break;
   }
 }
