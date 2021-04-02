@@ -9,9 +9,12 @@
 import 'dart:convert';
 import 'dart:io' as io;
 
-import 'package:file/file.dart';
 import 'package:dart_style/dart_style.dart';
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 import 'package:path/path.dart' as path;
+import 'package:platform/platform.dart';
+import 'package:process/process.dart';
 
 import 'configuration.dart';
 import 'data_types.dart';
@@ -20,11 +23,29 @@ import 'util.dart';
 /// Generates the snippet HTML, as well as saving the output snippet main to
 /// the output directory.
 class SnippetGenerator {
-  SnippetGenerator({SnippetConfiguration? configuration})
-      : configuration = configuration ??
+  SnippetGenerator(
+      {SnippetConfiguration? configuration,
+      Platform platform = const LocalPlatform(),
+      ProcessManager processManager = const LocalProcessManager(),
+      FileSystem filesystem = const LocalFileSystem(),
+      Directory? flutterRoot})
+      : flutterRoot = flutterRoot ??
+            getFlutterRoot(
+              platform: platform,
+              processManager: processManager,
+              filesystem: filesystem,
+            ),
+        configuration = configuration ??
             FlutterRepoSnippetConfiguration(
-              flutterRoot: getFlutterRoot(),
-            );
+                filesystem: filesystem,
+                flutterRoot: flutterRoot ??
+                    getFlutterRoot(
+                      platform: platform,
+                      processManager: processManager,
+                      filesystem: filesystem,
+                    ));
+
+  final Directory flutterRoot;
 
   /// The configuration used to determine where to get/save data for the
   /// snippet.
@@ -317,11 +338,10 @@ class SnippetGenerator {
           io.exit(1);
         }
         final String templateContents = _loadFileAsUtf8(templateFile);
-        final io.Directory flutterRoot = getFlutterRoot();
         final String templateRelativePath =
-        templateFile.absolute.path.contains(flutterRoot.absolute.path)
-            ? path.relative(templateFile.absolute.path, from: flutterRoot.absolute.path)
-            : templateFile.absolute.path;
+            templateFile.absolute.path.contains(flutterRoot.absolute.path)
+                ? path.relative(templateFile.absolute.path, from: flutterRoot.absolute.path)
+                : templateFile.absolute.path;
         String app = interpolateTemplate(
           snippetData,
           addSectionMarkers
@@ -339,17 +359,19 @@ class SnippetGenerator {
         }
         sample.output = app;
         final int descriptionIndex =
-        snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
+            snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
         final String descriptionString =
-        descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
+            descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
         sample.description = descriptionString;
         break;
       case SnippetSample:
-        if (sample is SnippetSample) { // So Dart does correct type inference.
+        if (sample is SnippetSample) {
+          // So Dart does correct type inference.
           String templateContents;
           final Map<String, Object?> metadata = Map<String, Object?>.from(sample.metadata);
           if (includeAssumptions) {
-            templateContents = '${headers.map<String>((SourceLine line) => line.text).join('\n')}\n{{#assumptions}}\n{{description}}\n{{code}}';
+            templateContents =
+                '${headers.map<String>((SourceLine line) => line.text).join('\n')}\n{{#assumptions}}\n{{description}}\n{{code}}';
           } else {
             templateContents = '{{description}}\n{{code}}';
           }
@@ -361,9 +383,9 @@ class SnippetGenerator {
           );
           sample.output = app;
           final int descriptionIndex =
-          snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
+              snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
           final String descriptionString =
-          descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
+              descriptionIndex == -1 ? '' : snippetData[descriptionIndex].mergedContent;
           sample.description = descriptionString;
         }
         break;
@@ -393,18 +415,20 @@ class SnippetGenerator {
       "import 'dart:typed_data';",
       "import 'dart:ui' as ui;",
       "import 'package:flutter_test/flutter_test.dart';",
-      for (final File file
-      in _listDartFiles(getFlutterRoot().childDirectory('packages').childDirectory('flutter').childDirectory('lib')))...<String>[
+      for (final File file in _listDartFiles(getFlutterRoot()
+          .childDirectory('packages')
+          .childDirectory('flutter')
+          .childDirectory('lib'))) ...<String>[
         '',
         '// ${file.path}',
         "import 'package:flutter/${path.basename(file.path)}';",
       ],
     ].map<SourceLine>((String code) => SourceLine(code)).toList();
   }
+
   List<SourceLine>? _headers;
 
-  static List<File> _listDartFiles(Directory directory,
-      {bool recursive = false}) {
+  static List<File> _listDartFiles(Directory directory, {bool recursive = false}) {
     return directory
         .listSync(recursive: recursive, followLinks: false)
         .whereType<File>()

@@ -63,7 +63,10 @@ main() {
 }
 ''');
       <String>['dartpad', 'sample', 'snippet'].forEach(_writeSkeleton);
-      generator = SnippetGenerator(configuration: configuration);
+      generator = SnippetGenerator(
+          configuration: configuration,
+          filesystem: memoryFileSystem,
+          flutterRoot: configuration.templatesDirectory.parent);
     });
     tearDown(() {
       tmpDir.deleteSync(recursive: true);
@@ -215,7 +218,7 @@ void main() {
       expect(
           html,
           contains(
-              '<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=dartpad.packages.flutter.lib.src.widgets.foo.222&sample_channel=stable"></iframe>\n'));
+              '<iframe class="snippet-dartpad" src="https://dartpad.dev/embed-flutter.html?split=60&run=true&sample_id=dartpad.src.widgets.foo.0&sample_channel=stable"></iframe>\n'));
     });
 
     test('generates sample metadata', () async {
@@ -256,7 +259,7 @@ void main() {
       expect(expectedMetadataFile.existsSync(), isTrue);
       final Map<String, dynamic> json =
           jsonDecode(expectedMetadataFile.readAsStringSync()) as Map<String, dynamic>;
-      expect(json['id'], equals('sample.packages.flutter.lib.src.widgets.foo.222'));
+      expect(json['id'], equals('sample.src.widgets.foo.0'));
       expect(json['channel'], equals('stable'));
       expect(json['file'], equals('snippet_out.dart'));
       expect(json['description'], equals('A description of the snippet.\n\nOn several lines.'));

@@ -32,47 +32,51 @@ class SnippetException implements Exception {
 
 int getIndent(String line) => line.length - line.trimLeft().length;
 
-Directory getFlutterRoot(
-    {Platform? platform,
-    ProcessManager? processManager,
-    FileSystem filesystem = const LocalFileSystem()}) {
+Directory getFlutterRoot({
+  Platform platform = const LocalPlatform(),
+  ProcessManager processManager = const LocalProcessManager(),
+  FileSystem filesystem = const LocalFileSystem(),
+}) {
   return getFlutterInformation(
       platform: platform,
       processManager: processManager,
       filesystem: filesystem)['flutterRoot'] as Directory;
 }
 
-Version getFlutterVersion(
-    {Platform? platform,
-    ProcessManager? processManager,
-    FileSystem filesystem = const LocalFileSystem()}) {
+Version getFlutterVersion({
+  Platform platform = const LocalPlatform(),
+  ProcessManager processManager = const LocalProcessManager(),
+  FileSystem filesystem = const LocalFileSystem(),
+}) {
   return getFlutterInformation(
       platform: platform,
       processManager: processManager,
       filesystem: filesystem)['frameworkVersion'] as Version;
 }
 
-Version getDartSdkVersion(
-    {Platform? platform,
-    ProcessManager? processManager,
-    FileSystem filesystem = const LocalFileSystem()}) {
+Version getDartSdkVersion({
+  Platform platform = const LocalPlatform(),
+  ProcessManager processManager = const LocalProcessManager(),
+  FileSystem filesystem = const LocalFileSystem(),
+}) {
   return getFlutterInformation(
       platform: platform,
       processManager: processManager,
       filesystem: filesystem)['dartSdkVersion'] as Version;
 }
 
-Map<String,dynamic>? _cachedFlutterInformation;
+Map<String, dynamic>? _cachedFlutterInformation;
 
-Map<String, dynamic> getFlutterInformation(
-    {Platform? platform,
-    ProcessManager? processManager,
-    FileSystem filesystem = const LocalFileSystem()}) {
+Map<String, dynamic> getFlutterInformation({
+  Platform platform = const LocalPlatform(),
+  ProcessManager processManager = const LocalProcessManager(),
+  FileSystem filesystem = const LocalFileSystem(),
+}) {
   if (_cachedFlutterInformation != null) {
     return _cachedFlutterInformation!;
   }
-  final ProcessManager manager = processManager ?? const LocalProcessManager();
-  final Platform resolvedPlatform = platform ?? const LocalPlatform();
+  final ProcessManager manager = processManager;
+  final Platform resolvedPlatform = platform;
   String flutterCommand;
   if (resolvedPlatform.environment['FLUTTER_ROOT'] != null) {
     flutterCommand = filesystem
@@ -167,10 +171,10 @@ String interpolateTemplate(
       final int componentIndex =
           injections.indexWhere((TemplateInjection injection) => injection.name == match[1]);
       if (componentIndex == -1) {
-      // If the match isn't found in the injections, then just remove the
-      // mustache reference, since we want to allow the sections to be
-      // "optional" in the input: users shouldn't be forced to add an empty
-      // "```dart preamble" section if that section would be empty.
+        // If the match isn't found in the injections, then just remove the
+        // mustache reference, since we want to allow the sections to be
+        // "optional" in the input: users shouldn't be forced to add an empty
+        // "```dart preamble" section if that section would be empty.
         return (metadata[match[1]] ?? '').toString();
       }
       return wrapSectionMarker(injections[componentIndex].stringContents, name: match[1]!);

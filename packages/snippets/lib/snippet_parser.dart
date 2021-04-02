@@ -35,7 +35,7 @@ class SnippetDartdocParser {
   /// to disk, and adds them to the appropriate [sectionMap] or [sampleMap].
   List<CodeSample> parse(
     File file, {
-    bool silent = false,
+    bool silent = true,
   }) {
     final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
     final List<SourceLine> assumptions = parseAssumptions(file);
@@ -61,6 +61,7 @@ class SnippetDartdocParser {
     required File sourceFile,
     String template = '',
     String type = '',
+    bool silent = true,
   }) {
     final List<SourceLine> lines = <SourceLine>[];
     int lineNumber = startLine ?? 0;
@@ -82,7 +83,7 @@ class SnippetDartdocParser {
       lineNumber++;
     }
     // No need to get a preamble: dartdoc won't give that to us.
-    final List<CodeSample> samples = parseFromComments(<List<SourceLine>>[lines]);
+    final List<CodeSample> samples = parseFromComments(<List<SourceLine>>[lines], silent: silent);
     for (final CodeSample sample in samples) {
       sample.metadata.addAll(<String, Object?>{
         'id': sample.id,

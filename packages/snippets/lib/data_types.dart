@@ -76,7 +76,7 @@ abstract class CodeSample {
     this.args,
     this.input, {
     required this.index,
-  })  : assert(input.isNotEmpty),
+  })   : assert(input.isNotEmpty),
         assert(args.isNotEmpty),
         id = _createNameFromSource(args.first, input.first, index);
 
@@ -137,12 +137,13 @@ abstract class CodeSample {
 /// a single block.
 class SnippetSample extends CodeSample {
   SnippetSample(List<SourceLine> input, {required int index})
-      : assumptions = <SourceLine>[], super(<String>['snippet'], input, index: index);
+      : assumptions = <SourceLine>[],
+        super(<String>['snippet'], input, index: index);
 
   factory SnippetSample.combine(List<SnippetSample> sections, {required int index}) {
     final List<SourceLine> code =
         sections.expand((SnippetSample section) => section.input).toList();
-    return SnippetSample(code, index:index);
+    return SnippetSample(code, index: index);
   }
 
   factory SnippetSample.fromStrings(SourceLine firstLine, List<String> code, {required int index}) {
@@ -161,7 +162,8 @@ class SnippetSample extends CodeSample {
     return SnippetSample(codeLines, index: index);
   }
 
-  factory SnippetSample.surround(String prefix, List<SourceLine> code, String postfix, {required int index}) {
+  factory SnippetSample.surround(String prefix, List<SourceLine> code, String postfix,
+      {required int index}) {
     return SnippetSample(<SourceLine>[
       if (prefix.isNotEmpty) SourceLine(prefix),
       ...code,

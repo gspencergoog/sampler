@@ -33,19 +33,22 @@ class FlutterProject {
   final String? _name;
   final Directory? flutterRoot;
 
-  String get name => _name ?? '${sample.type}_${sample.element.snakeCase.replaceAll('.', '_')}_${sample.index}';
+  String get name =>
+      _name ?? '${sample.type}_${sample.element.snakeCase.replaceAll('.', '_')}_${sample.index}';
   File get mainDart => location.childDirectory('lib').childFile('main.dart');
 
   Future<Map<String, int>> _findReplacementRangeAndIndents() async {
     final File frameworkFile = sample.start.file!;
-    final List<List<SourceLine>> frameworkComments = getFileComments(frameworkFile).where((List<SourceLine> lines) {
+    final List<List<SourceLine>> frameworkComments =
+        getFileComments(frameworkFile).where((List<SourceLine> lines) {
       return lines.first.element == sample.element;
     }).toList();
     if (frameworkComments.length != 1) {
       throw SnippetException('Unable to find original comment block for sample ${sample.id}');
     }
     final SnippetDartdocParser parser = SnippetDartdocParser();
-    final List<CodeSample> foundBlocks = parser.parseComment(frameworkComments.first).where((CodeSample foundSample) {
+    final List<CodeSample> foundBlocks =
+        parser.parseComment(frameworkComments.first).where((CodeSample foundSample) {
       return foundSample.id == sample.id;
     }).toList();
     if (foundBlocks.length != 1) {
@@ -68,10 +71,15 @@ class FlutterProject {
       cursor++;
     }
     final String firstLine = contents.substring(startFirstLine, cursor);
-    return <String, int>{'startRange': startFirstLine, 'endRange': endRange, 'firstIndent': getIndent(firstLine)};
+    return <String, int>{
+      'startRange': startFirstLine,
+      'endRange': endRange,
+      'firstIndent': getIndent(firstLine)
+    };
   }
 
-  String _buildSampleReplacement(Map<String, List<String>> sections, List<String> sectionOrder, int indent) {
+  String _buildSampleReplacement(
+      Map<String, List<String>> sections, List<String> sectionOrder, int indent) {
     final String commentMarker = '${' ' * indent}///';
     final List<String> result = <String>[commentMarker]; // add a blank line at the beginning.
     for (final String section in sectionOrder) {
@@ -95,10 +103,11 @@ class FlutterProject {
     return result.join('\n');
   }
 
-  Future<void> _parseMainDart({required Map<String, List<String>> sections, required List<String> sectionOrder}) async {
+  Future<void> _parseMainDart(
+      {required Map<String, List<String>> sections, required List<String> sectionOrder}) async {
     final List<String> mainDartLines = await mainDart.readAsLines();
-    final RegExp sectionMarkerRe = RegExp(
-        r'^([/]{2}\*) ((?<direction>\S)\3{7}) (?<name>[-a-zA-Z0-9]+).*$');
+    final RegExp sectionMarkerRe =
+        RegExp(r'^([/]{2}\*) ((?<direction>\S)\3{7}) (?<name>[-a-zA-Z0-9]+).*$');
     String? currentSection;
     int firstTrailingEmpty = -1;
     sections.clear();
@@ -115,16 +124,15 @@ class FlutterProject {
           // End of a section
           // Remove any blank lines at the end
           if (firstTrailingEmpty >= 0 && firstTrailingEmpty < sections[currentSection]!.length) {
-            sections[currentSection]!.removeRange(firstTrailingEmpty, sections[currentSection]!.length);
+            sections[currentSection]!
+                .removeRange(firstTrailingEmpty, sections[currentSection]!.length);
           }
           currentSection = null;
           firstTrailingEmpty = -1;
         }
       } else {
         if (currentSection != null) {
-          final bool isEmpty = line
-              .trim()
-              .isEmpty;
+          final bool isEmpty = line.trim().isEmpty;
           if (sections[currentSection]!.isEmpty && isEmpty) {
             continue;
           }
@@ -148,7 +156,7 @@ class FlutterProject {
       // in order.
       final Map<String, List<String>> sections = <String, List<String>>{};
       final List<String> sectionOrder = <String>[];
-      await _parseMainDart(sections:sections, sectionOrder: sectionOrder);
+      await _parseMainDart(sections: sections, sectionOrder: sectionOrder);
 
       // Re-parse the original file to find the current char range for the
       // original example.
@@ -156,13 +164,17 @@ class FlutterProject {
       final File frameworkFile = sample.start.file!;
       String frameworkContents = await frameworkFile.readAsString();
       print('Ranges: $rangesAndIndents');
-      print('Start char: ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!-1)} [${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!+1)}');
-      print('End char: ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!-1)} [${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!+1)}');
+      print(
+          'Start char: ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']! - 1)} [${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']! + 1)}');
+      print(
+          'End char: ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']! - 1)} [${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']! + 1)}');
 
       // 3) Create a substitute example, and replace the char range with the new example.
-      final String replacement = _buildSampleReplacement(sections, sectionOrder, rangesAndIndents['firstIndent']!);
+      final String replacement =
+          _buildSampleReplacement(sections, sectionOrder, rangesAndIndents['firstIndent']!);
       // 4) Rewrite the original framework file.
-      frameworkContents = frameworkContents.replaceRange(rangesAndIndents['startRange']!, rangesAndIndents['endRange']!, replacement);
+      frameworkContents = frameworkContents.replaceRange(
+          rangesAndIndents['startRange']!, rangesAndIndents['endRange']!, replacement);
       await frameworkFile.writeAsString(frameworkContents);
     } on SnippetException catch (e) {
       return e.message;

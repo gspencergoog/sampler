@@ -147,9 +147,9 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
       for (final VariableDeclaration declaration in node.fields.variables) {
         if (!declaration.name.name.startsWith('_')) {
-          final String element = '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${declaration.name.name}';
-          results['field $element'] =
-              _processComment(element, node.documentationComment!);
+          final String element =
+              '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${declaration.name.name}';
+          results['field $element'] = _processComment(element, node.documentationComment!);
         }
       }
     }
@@ -162,9 +162,9 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         node.documentationComment != null &&
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name!.name.startsWith('_')) {
-      final String element = '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name!.name}';
-      results['constructor $element'] =
-          _processComment(element, node.documentationComment!);
+      final String element =
+          '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name!.name}';
+      results['constructor $element'] = _processComment(element, node.documentationComment!);
     }
     return super.visitConstructorDeclaration(node);
   }
@@ -185,9 +185,9 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
     if (node.documentationComment != null &&
         node.documentationComment!.tokens.isNotEmpty &&
         !node.name.name.startsWith('_')) {
-      final String element = '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name.name}';
-      results['method $element'] =
-          _processComment(element, node.documentationComment!);
+      final String element =
+          '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name.name}';
+      results['method $element'] = _processComment(element, node.documentationComment!);
     }
     return super.visitMethodDeclaration(node);
   }

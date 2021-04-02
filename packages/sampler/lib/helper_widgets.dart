@@ -167,7 +167,8 @@ class ActionPanel extends StatelessWidget {
             ),
           ),
           child: Row(
-            mainAxisAlignment: children.length < 2 ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+                children.length < 2 ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: children,
           ),
@@ -217,7 +218,7 @@ class AutocompleteField extends StatelessWidget {
 
 class CodePanel extends StatefulWidget {
   const CodePanel({Key? key, required this.code}) : super(key: key);
-  
+
   final String code;
 
   @override

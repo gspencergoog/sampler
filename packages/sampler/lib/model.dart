@@ -87,8 +87,9 @@ class Model extends ChangeNotifier {
     if (_workingFile == null) {
       return;
     }
-    _samples = _dartdocParser
-        .parse(filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path)));
+    _samples = _dartdocParser.parse(
+        filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path)),
+        silent: true);
     for (final CodeSample sample in samples!) {
       _snippetGenerator.generateCode(sample, addSectionMarkers: true, includeAssumptions: true);
     }
