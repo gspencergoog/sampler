@@ -86,59 +86,106 @@ class _DetailViewState extends State<DetailView> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: <Widget>[
-            DataLabel(label: 'Type of sample:', data: sample.type),
-            DataLabel(
-                label: 'Sample is attached to:',
-                data: '${sample.element} starting at line ${sample.start.line}'),
-            ActionPanel(
-              isBusy: exporting,
-              children: <Widget>[
-                if (!exporting)
-                  TextButton(
-                      child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
-                      onPressed: _exportSample),
-                if (project != null && !exporting) OutputLocation(location: project!.location),
-              ],
-            ),
-            ActionPanel(
-              isBusy: importing,
-              children: <Widget>[
-                TextButton(
-                    child: const Text('SAVE TO FRAMEWORK FILE'),
-                    onPressed: project != null && !exporting && !importing ? () => _saveToFrameworkFile(context) : null),
-                const Spacer(),
-                if (sample.start.file != null)
-                  OutputLocation(
-                    location: sample.start.file!.parent,
-                    file: sample.start.file!,
-                    startLine: sample.start.line,
-                  ),
-              ],
-            ),
-            Expanded(
-              child: ListView(
-                shrinkWrap: true,
+        child: DefaultTabController(
+          initialIndex: 0,
+          length: 2,
+          child: Column(
+            children: <Widget>[
+              DataLabel(label: 'Type of sample:', data: sample.type),
+              DataLabel(
+                  label: 'Sample is attached to:',
+                  data: '${sample.element} starting at line ${sample.start.line}'),
+              ActionPanel(
+                isBusy: exporting,
                 children: <Widget>[
-                  ListTile(
-                    title: HighlightView(
-                      // The original code to be highlighted
-                      sample.output,
-                      language: 'dart',
-                      tabSize: 2,
-                      theme: githubTheme,
-                      padding: const EdgeInsets.all(12),
-                      textStyle: const TextStyle(
-                        fontFamily: 'Fira Code',
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
+                  if (!exporting)
+                    TextButton(
+                        child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
+                        onPressed: _exportSample),
+                  if (project != null && !exporting) OutputLocation(location: project!.location),
                 ],
               ),
-            ),
-          ],
+              ActionPanel(
+                isBusy: importing,
+                children: <Widget>[
+                  TextButton(
+                      child: const Text('SAVE TO FRAMEWORK FILE'),
+                      onPressed: project != null && !exporting && !importing
+                          ? () => _saveToFrameworkFile(context)
+                          : null),
+                  const Spacer(),
+                  if (sample.start.file != null)
+                    OutputLocation(
+                      location: sample.start.file!.parent,
+                      file: sample.start.file!,
+                      startLine: sample.start.line,
+                    ),
+                ],
+              ),
+              Expanded(
+                child: Container(
+                  color: Colors.grey.shade400,
+                  height: 100,
+                  child: TabBar(
+                    labelColor: Theme.of(context).indicatorColor,
+                    tabs: const <Tab>[
+                      Tab(
+                        child: Text('Original'),
+                      ),
+                      Tab(
+                        child: Text('Exported'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 4,
+                child: TabBarView(
+                  children: <Widget>[
+                    ListView(
+                      shrinkWrap: true,
+                      children: <Widget>[
+                        ListTile(
+                          title: HighlightView(
+                            // The original code to be highlighted
+                            sample.input.map<String>((SourceLine line) => line.text).join('\n'),
+                            language: 'dart',
+                            tabSize: 2,
+                            theme: githubTheme,
+                            padding: const EdgeInsets.all(12),
+                            textStyle: const TextStyle(
+                              fontFamily: 'Fira Code',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ListView(
+                      shrinkWrap: true,
+                      children: <Widget>[
+                        ListTile(
+                          title: HighlightView(
+                            // The original code to be highlighted
+                            sample.output,
+                            language: 'dart',
+                            tabSize: 2,
+                            theme: githubTheme,
+                            padding: const EdgeInsets.all(12),
+                            textStyle: const TextStyle(
+                              fontFamily: 'Fira Code',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
