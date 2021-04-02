@@ -28,7 +28,7 @@ class _DetailViewState extends State<DetailView> {
   bool exporting = false;
   bool importing = false;
 
-  void _exportSample() {
+  void _extractSample() {
     setState(() {
       exporting = true;
       if (project == null) {
@@ -45,7 +45,7 @@ class _DetailViewState extends State<DetailView> {
     });
   }
 
-  void _saveToFrameworkFile(BuildContext context) {
+  void _reinsertIntoFrameworkFile(BuildContext context) {
     setState(() {
       if (project == null) {
         return;
@@ -101,8 +101,8 @@ class _DetailViewState extends State<DetailView> {
                 children: <Widget>[
                   if (!exporting)
                     TextButton(
-                        child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
-                        onPressed: _exportSample),
+                        child: Text(project == null ? 'EXTRACT SAMPLE' : 'RE-EXTRACT SAMPLE'),
+                        onPressed: _extractSample),
                   if (project != null && !exporting) OutputLocation(location: project!.location),
                 ],
               ),
@@ -110,9 +110,9 @@ class _DetailViewState extends State<DetailView> {
                 isBusy: importing,
                 children: <Widget>[
                   TextButton(
-                      child: const Text('SAVE TO FRAMEWORK FILE'),
+                      child: const Text('REINSERT'),
                       onPressed: project != null && !exporting && !importing
-                          ? () => _saveToFrameworkFile(context)
+                          ? () => _reinsertIntoFrameworkFile(context)
                           : null),
                   const Spacer(),
                   if (sample.start.file != null)

@@ -159,7 +159,7 @@ packages:
     source: hosted
     version: "2.0.0"
   path:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path
       url: "https://pub.dartlang.org"
@@ -173,14 +173,14 @@ packages:
     source: hosted
     version: "1.11.0"
   platform:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: platform
       url: "https://pub.dartlang.org"
     source: hosted
     version: "3.0.0"
   process:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: process
       url: "https://pub.dartlang.org"
@@ -225,7 +225,7 @@ packages:
       path: "../snippets"
       relative: true
     source: path
-    version: "1.0.0"
+    version: "0.1.0"
   source_span:
     dependency: transitive
     description:
