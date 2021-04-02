@@ -34,27 +34,35 @@ function get_platform() {
   esac
 }
 
-function install_result() {
+function install_result() (
   local platform="$1"
-  git rm -rf "$REPO_DIR/bin/$platform"
-  rm -rf "$REPO_DIR/bin/$platform"
-  mkdir -p "$REPO_DIR/bin/$platform"
+  cd "$REPO_DIR/bin" || return 1
+  git rm -rf "$platform" 2>/dev/null || true
+  rm -rf "$platform" || true
+  mkdir -p "$platform"
   case "$platform" in
     linux)
-      cp -r "build/linux/x64/release/bundle/*" "$REPO_DIR/bin/linux"
+      cp -r "$REPO_DIR"/packages/sampler/build/linux/x64/release/bundle/* "linux"
+      tar cvJf "$platform.tar.xz" "$REPO_DIR/bin/$platform"
       ;;
     macos)
-      cp -r "build/macos/Build/Products/Release/sampler.app" "$REPO_DIR/bin/macos/sampler.app"
+      cp -r "$REPO_DIR/packages/sampler/build/macos/Build/Products/Release/sampler.app" "macos/sampler.app"
+      rm -f "$platform.zip" || true
+      zip -r "$platform.zip" "$platform"
       ;;
     windows)
-      cp -r "build/windows/runner/Release/*" "$REPO_DIR/bin/windows"
+      cp -r "$REPO_DIR"/packages/sampler/build/windows/runner/Release/* "windows"
+      rm -f "$platform.zip" || true
+      7z a -r "$platform.zip" "$platform" 1> /dev/null 2>&1 || echo "Failed to zip Windows binary."
       ;;
     *)
       echo "Unknown platform $platform"
       ;;
-   esac
-  git add "$REPO_DIR/bin/$platform"
-}
+  esac
+  cd "$REPO_DIR"
+  git add "bin/$platform"
+  git add "bin/$platform.zip"
+)
 
 platform=$(get_platform)
 
