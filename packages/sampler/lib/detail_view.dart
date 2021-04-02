@@ -123,63 +123,22 @@ class _DetailViewState extends State<DetailView> {
                 ],
               ),
               Expanded(
-                child: Container(
-                  color: Colors.grey.shade400,
-                  height: 100,
-                  child: TabBar(
-                    labelColor: Theme.of(context).indicatorColor,
-                    tabs: const <Tab>[
-                      Tab(
-                        child: Text('Original'),
-                      ),
-                      Tab(
-                        child: Text('Exported'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: TabBarView(
+                child: ListView(
+                  shrinkWrap: true,
                   children: <Widget>[
-                    ListView(
-                      shrinkWrap: true,
-                      children: <Widget>[
-                        ListTile(
-                          title: HighlightView(
-                            // The original code to be highlighted
-                            sample.input.map<String>((SourceLine line) => line.text).join('\n'),
-                            language: 'dart',
-                            tabSize: 2,
-                            theme: githubTheme,
-                            padding: const EdgeInsets.all(12),
-                            textStyle: const TextStyle(
-                              fontFamily: 'Fira Code',
-                              fontSize: 12,
-                            ),
-                          ),
+                    ListTile(
+                      title: HighlightView(
+                        // The original code to be highlighted
+                        sample.input.map<String>((SourceLine line) => line.text).join('\n'),
+                        language: 'dart',
+                        tabSize: 2,
+                        theme: githubTheme,
+                        padding: const EdgeInsets.all(12),
+                        textStyle: const TextStyle(
+                          fontFamily: 'Fira Code',
+                          fontSize: 12,
                         ),
-                      ],
-                    ),
-                    ListView(
-                      shrinkWrap: true,
-                      children: <Widget>[
-                        ListTile(
-                          title: HighlightView(
-                            // The original code to be highlighted
-                            sample.output,
-                            language: 'dart',
-                            tabSize: 2,
-                            theme: githubTheme,
-                            padding: const EdgeInsets.all(12),
-                            textStyle: const TextStyle(
-                              fontFamily: 'Fira Code',
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
