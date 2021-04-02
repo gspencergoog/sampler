@@ -64,13 +64,27 @@ class Model extends ChangeNotifier {
 
   File? get workingFile => _workingFile;
 
-  Future<void> setWorkingFile(File? value) async {
+  void clearWorkingFile() {
+    if (_workingFile == null) {
+      return;
+    }
+    _workingFile = null;
+    _workingSample = null;
+    _samples = null;
+    notifyListeners();
+  }
+
+  Future<void> setWorkingFile(File value) async {
     if (_workingFile == value) {
       return;
     }
     _workingFile = value;
+
+    // Clear existing selections if the file has changed.
+    _workingSample = null;
+    _samples = null;
+
     if (_workingFile == null) {
-      _samples = null;
       return;
     }
     _samples = _dartdocParser

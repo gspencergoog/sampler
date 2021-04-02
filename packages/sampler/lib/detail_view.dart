@@ -6,8 +6,6 @@ import 'package:file/file.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
-import 'package:flutter_highlight/themes/github.dart';
 import 'package:path/path.dart' as path;
 import 'package:snippets/snippets.dart';
 
@@ -22,7 +20,7 @@ class DetailView extends StatefulWidget {
 }
 
 Future<void> _doExport(FlutterProject project) async {
-  await project.export(overwrite: true);
+  await project.extract(overwrite: true);
 }
 
 class _DetailViewState extends State<DetailView> {
@@ -53,7 +51,7 @@ class _DetailViewState extends State<DetailView> {
         return;
       }
       importing = true;
-      project!.restore().then((String error) {
+      project!.reinsert().then((String error) {
         if (error.isEmpty) {
           return;
         }
@@ -95,6 +93,9 @@ class _DetailViewState extends State<DetailView> {
               DataLabel(
                   label: 'Sample is attached to:',
                   data: '${sample.element} starting at line ${sample.start.line}'),
+              Expanded(
+                child: CodePanel(code: sample.inputAsString),
+              ),
               ActionPanel(
                 isBusy: exporting,
                 children: <Widget>[
@@ -121,27 +122,6 @@ class _DetailViewState extends State<DetailView> {
                       startLine: sample.start.line,
                     ),
                 ],
-              ),
-              Expanded(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: <Widget>[
-                    ListTile(
-                      title: HighlightView(
-                        // The original code to be highlighted
-                        sample.inputAsString,
-                        language: 'dart',
-                        tabSize: 2,
-                        theme: githubTheme,
-                        padding: const EdgeInsets.all(12),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Fira Code',
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

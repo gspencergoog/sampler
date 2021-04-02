@@ -5,6 +5,8 @@
 import 'package:file/file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_highlight/themes/github.dart';
+import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:platform/platform.dart';
 
 import 'utils.dart';
@@ -209,6 +211,61 @@ class AutocompleteField extends StatelessWidget {
         ),
         if (trailing != null) trailing!,
       ],
+    );
+  }
+}
+
+class CodePanel extends StatefulWidget {
+  const CodePanel({Key? key, required this.code}) : super(key: key);
+  
+  final String code;
+
+  @override
+  _CodePanelState createState() => _CodePanelState();
+}
+
+class _CodePanelState extends State<CodePanel> {
+  late Map<String, TextStyle> highlightTheme;
+
+  @override
+  void initState() {
+    super.initState();
+    highlightTheme = Map<String, TextStyle>.from(githubTheme);
+    highlightTheme['root'] = highlightTheme['root']!.copyWith(backgroundColor: Colors.transparent);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8.0),
+      decoration: const ShapeDecoration(
+        color: Colors.black12,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(10.0),
+          ),
+        ),
+      ),
+      child: ListView(
+        shrinkWrap: true,
+        children: <Widget>[
+          ListTile(
+            title: HighlightView(
+              // The original code to be highlighted
+              widget.code,
+              language: 'dart',
+              tabSize: 2,
+              theme: highlightTheme,
+              padding: const EdgeInsets.all(12),
+              textStyle: const TextStyle(
+                fontFamily: 'Fira Code',
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

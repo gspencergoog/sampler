@@ -13,8 +13,6 @@ import 'detail_view.dart';
 import 'helper_widgets.dart';
 import 'model.dart';
 
-const FileSystem fs = LocalFileSystem();
-
 const String _kFileOption = 'file';
 const String _kFlutterRootOption = 'flutter-root';
 
@@ -25,16 +23,19 @@ void main(List<String> argv) {
       help: 'Specifies the location of the Flutter root directory.');
   final ArgResults args = parser.parse(argv);
 
+  const FileSystem filesystem = LocalFileSystem();
+
   Directory? flutterRoot;
   if (args.wasParsed(_kFlutterRootOption)) {
-    flutterRoot = fs.directory(args[_kFlutterRootOption] as String);
+    flutterRoot = filesystem.directory(args[_kFlutterRootOption] as String);
   }
   File? workingFile;
   if (args.wasParsed(_kFileOption)) {
-    workingFile = fs.file(args[_kFileOption]);
+    workingFile = filesystem.file(args[_kFileOption]);
   }
 
-  Model.instance = Model(workingFile: workingFile, flutterRoot: flutterRoot, filesystem: fs);
+  Model.instance =
+      Model(workingFile: workingFile, flutterRoot: flutterRoot, filesystem: filesystem);
 
   runApp(const MainApp());
 }
@@ -63,7 +64,8 @@ ExpansionPanel createExpansionPanel(CodeSample sample, {bool isExpanded = false}
   return ExpansionPanel(
     headerBuilder: (BuildContext context, bool isExpanded) {
       return ListTile(
-        title: Text('${sample.start.element}${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line} (${sample.type})'),
+        title: Text(
+            '${sample.start.element}${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line} (${sample.type})'),
         trailing: TextButton(
           child: const Text('SELECT'),
           onPressed: () {
@@ -74,16 +76,7 @@ ExpansionPanel createExpansionPanel(CodeSample sample, {bool isExpanded = false}
       );
     },
     body: ListTile(
-      title: HighlightView(
-        sample.inputAsString,
-        language: 'dart',
-        theme: githubTheme,
-        padding: const EdgeInsets.all(12),
-        textStyle: const TextStyle(
-          fontFamily: 'Fira Code',
-          fontSize: 12,
-        ),
-      ),
+      title: CodePanel(code: sample.inputAsString),
     ),
     isExpanded: isExpanded,
   );
@@ -101,6 +94,7 @@ class Sampler extends StatefulWidget {
 class _SamplerState extends State<Sampler> {
   bool get filesLoading => Model.instance.files == null;
   int expandedIndex = -1;
+  TextEditingController editingController = TextEditingController();
 
   @override
   void initState() {
@@ -111,12 +105,24 @@ class _SamplerState extends State<Sampler> {
       });
     }
     Model.instance.addListener(_modelUpdated);
+    editingController.addListener(_editingControllerChanged);
   }
 
   @override
   void dispose() {
     Model.instance.removeListener(_modelUpdated);
+    editingController.dispose();
     super.dispose();
+  }
+
+  void _editingControllerChanged() {
+    if (Model.instance.files == null) {
+      return;
+    }
+    if (editingController.text.isEmpty ||
+        !Model.instance.files!.contains(Model.instance.filesystem.file(editingController.text))) {
+      Model.instance.clearWorkingFile();
+    }
   }
 
   void _modelUpdated() {
@@ -149,12 +155,27 @@ class _SamplerState extends State<Sampler> {
               onPressed: () {
                 setState(() {
                   textEditingController.clear();
-                  Model.instance.setWorkingFile(null);
-                  Model.instance.workingSample = null;
+                  expandedIndex = -1;
+                  Model.instance.clearWorkingFile();
                 });
               })
           : null,
     );
+  }
+
+  String _getSampleStats() {
+    if (Model.instance.samples == null || Model.instance.samples!.isEmpty) {
+      return 'No samples loaded.';
+    }
+    final int snippets = Model.instance.samples!.whereType<SnippetSample>().length;
+    final int applications = Model.instance.samples!.whereType<ApplicationSample>().length;
+    final int dartpads = Model.instance.samples!.whereType<DartpadSample>().length;
+    return '${Model.instance.samples!.length} samples found: ' +
+        <String>[
+          if (snippets > 0) '$snippets snippets',
+          if (applications > 0) '$applications application samples',
+          if (dartpads > 0) '$dartpads dartpad samples'
+        ].join(', ');
   }
 
   @override
@@ -209,17 +230,19 @@ class _SamplerState extends State<Sampler> {
                           optionsBuilder: _fileOptions,
                           displayStringForOption: (File file) => file.path,
                           onSelected: (File file) {
+                            expandedIndex = -1;
                             Model.instance.setWorkingFile(file);
                           },
                         )),
-                        if (Model.instance.samples != null)
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(start: 8.0),
-                            child: Text('${Model.instance.samples!.length} samples'),
-                          ),
                       ],
                     ),
                   ),
+                  if (Model.instance.samples != null)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.all(8.0),
+                      child: Text(_getSampleStats(),
+                          textAlign: TextAlign.center, style: Theme.of(context).textTheme.caption),
+                    ),
                   ExpansionPanelList(
                     children: panels,
                     expansionCallback: (int index, bool expanded) {

@@ -83,7 +83,7 @@ class FlutterProject {
       }
       result.addAll(sections[section]!.map<String>((String line) {
         line = line.substring(math.min(math.min(sectionIndent, getIndent(line)), line.length));
-        return '$commentMarker $line';
+        return line.isEmpty ? commentMarker : '$commentMarker $line';
       }));
       if (section != 'description') {
         result.add('$commentMarker ```');
@@ -142,7 +142,7 @@ class FlutterProject {
     }
   }
 
-  Future<String> restore() async {
+  Future<String> reinsert() async {
     try {
       // Load up the modified main.dart and parse out the components, keeping them
       // in order.
@@ -170,7 +170,7 @@ class FlutterProject {
     return '';
   }
 
-  Future<bool> export({bool overwrite = false}) async {
+  Future<bool> extract({bool overwrite = false}) async {
     if (await location.exists() && !overwrite) {
       throw SnippetException(
           'Project output location ${location.absolute.path} exists, refusing to overwrite.');
