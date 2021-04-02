@@ -43,17 +43,20 @@ function install_result() (
   case "$platform" in
     linux)
       cp -r "$REPO_DIR"/packages/sampler/build/linux/x64/release/bundle/* "linux"
-      tar cvJf "$platform.tar.xz" "$REPO_DIR/bin/$platform"
+      tar cvJf "$platform.tar.xz" "$platform"
+      git add "$platform.tar.xz"
       ;;
     macos)
       cp -r "$REPO_DIR/packages/sampler/build/macos/Build/Products/Release/sampler.app" "macos/sampler.app"
       rm -f "$platform.zip" || true
       zip -r "$platform.zip" "$platform"
+      git add "$platform.zip"
       ;;
     windows)
       cp -r "$REPO_DIR"/packages/sampler/build/windows/runner/Release/* "windows"
       rm -f "$platform.zip" || true
       7z a -r "$platform.zip" "$platform" 1> /dev/null 2>&1 || echo "Failed to zip Windows binary."
+      git add "$platform.zip"
       ;;
     *)
       echo "Unknown platform $platform"
@@ -61,7 +64,6 @@ function install_result() (
   esac
   cd "$REPO_DIR"
   git add "bin/$platform"
-  git add "bin/$platform.zip"
 )
 
 platform=$(get_platform)
