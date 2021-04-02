@@ -80,47 +80,98 @@ class OutputLocation extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(4.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: <Widget>[
-            Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-                child: Text('$label${label.isNotEmpty ? ' ' : ''}$path'),
-              ),
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
-                child: IconButton(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
+                  child: Text(
+                    '$label${label.isNotEmpty ? ' ' : ''}$path',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
+                  child: IconButton(
                     tooltip: 'Copy path to clipboard',
                     icon: const Icon(Icons.copy),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: path));
-                    }),
-              ),
-            ]),
+                    },
+                  ),
+                ),
+              ],
+            ),
             Row(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
                 Padding(
                   padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
                   child: TextButton(
-                      child: Text('OPEN IN $_fileBrowserName'),
-                      onPressed: () {
-                        openFileBrowser(file?.parent ?? location);
-                      }),
+                    child: Text('OPEN IN $_fileBrowserName'),
+                    onPressed: () {
+                      openFileBrowser(file?.parent ?? location);
+                    },
+                  ),
                 ),
                 for (final IdeType type in IdeType.values)
                   Padding(
                     padding: const EdgeInsetsDirectional.only(start: 8.0, end: 8.0),
                     child: TextButton(
-                        child: Text('OPEN IN ${getIdeName(type).toUpperCase()}'),
-                        onPressed: () {
-                          openInIde(type, file ?? location, startLine: startLine);
-                        }),
+                      child: Text('OPEN IN ${getIdeName(type).toUpperCase()}'),
+                      onPressed: () {
+                        openInIde(type, file ?? location, startLine: startLine);
+                      },
+                    ),
                   ),
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class ActionPanel extends StatelessWidget {
+  const ActionPanel({
+    Key? key,
+    required this.children,
+    this.isBusy = false,
+  }) : super(key: key);
+
+  final List<Widget> children;
+  final bool isBusy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: <Widget>[
+        Container(
+          height: 100,
+          margin: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(8.0),
+          decoration: const ShapeDecoration(
+            color: Colors.black12,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(10.0),
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: children.length < 2 ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: children,
+          ),
+        ),
+        if (isBusy) const CircularProgressIndicator.adaptive(value: null),
+      ],
     );
   }
 }

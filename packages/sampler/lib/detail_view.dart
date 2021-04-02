@@ -28,6 +28,7 @@ Future<void> _doExport(FlutterProject project) async {
 class _DetailViewState extends State<DetailView> {
   FlutterProject? project;
   bool exporting = false;
+  bool importing = false;
 
   void _exportSample() {
     setState(() {
@@ -51,6 +52,7 @@ class _DetailViewState extends State<DetailView> {
       if (project == null) {
         return;
       }
+      importing = true;
       project!.restore().then((String error) {
         if (error.isEmpty) {
           return;
@@ -61,6 +63,10 @@ class _DetailViewState extends State<DetailView> {
             content: Text(error),
           ),
         );
+      }).whenComplete(() {
+        setState(() {
+          importing = false;
+        });
       });
     });
   }
@@ -86,55 +92,30 @@ class _DetailViewState extends State<DetailView> {
             DataLabel(
                 label: 'Sample is attached to:',
                 data: '${sample.element} starting at line ${sample.start.line}'),
-            Stack(
-              alignment: Alignment.center,
+            ActionPanel(
+              isBusy: exporting,
               children: <Widget>[
-                Container(
-                  height: 100,
-                  margin: const EdgeInsets.all(8.0),
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: const ShapeDecoration(
-                      color: Colors.black12,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(10.0)))),
-                  child: Row(
-                    mainAxisAlignment:
-                        project == null ? MainAxisAlignment.center : MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      TextButton(
-                          child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
-                          onPressed: _exportSample),
-                      if (project != null && !exporting)
-                        OutputLocation(location: project!.location),
-                    ],
-                  ),
-                ),
-                if (exporting) const CircularProgressIndicator.adaptive(value: null),
+                if (!exporting)
+                  TextButton(
+                      child: Text(project == null ? 'EXPORT SAMPLE' : 'RE-EXPORT SAMPLE'),
+                      onPressed: _exportSample),
+                if (project != null && !exporting) OutputLocation(location: project!.location),
               ],
             ),
-            Container(
-              height: 100,
-              margin: const EdgeInsets.all(8.0),
-              padding: const EdgeInsets.all(8.0),
-              decoration: const ShapeDecoration(
-                  color: Colors.black12,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(10.0)))),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  TextButton(
-                      child: const Text('SAVE TO FRAMEWORK FILE'), onPressed: () => _saveToFrameworkFile(context)),
-                  const Spacer(),
-                  if (sample.start.file != null)
-                    OutputLocation(
-                      location: sample.start.file!.parent,
-                      file: sample.start.file!,
-                      startLine: sample.start.line,
-                    ),
-                ],
-              ),
+            ActionPanel(
+              isBusy: importing,
+              children: <Widget>[
+                TextButton(
+                    child: const Text('SAVE TO FRAMEWORK FILE'),
+                    onPressed: project != null && !exporting && !importing ? () => _saveToFrameworkFile(context) : null),
+                const Spacer(),
+                if (sample.start.file != null)
+                  OutputLocation(
+                    location: sample.start.file!.parent,
+                    file: sample.start.file!,
+                    startLine: sample.start.line,
+                  ),
+              ],
             ),
             Expanded(
               child: ListView(
