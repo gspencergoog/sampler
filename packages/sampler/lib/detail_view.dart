@@ -129,7 +129,7 @@ class _DetailViewState extends State<DetailView> {
                     ListTile(
                       title: HighlightView(
                         // The original code to be highlighted
-                        sample.input.map<String>((SourceLine line) => line.text).join('\n'),
+                        sample.inputAsString,
                         language: 'dart',
                         tabSize: 2,
                         theme: githubTheme,

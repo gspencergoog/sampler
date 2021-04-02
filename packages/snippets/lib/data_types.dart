@@ -83,6 +83,8 @@ abstract class CodeSample {
   final List<String> args;
   final String id;
   final List<SourceLine> input;
+  Iterable<String> get inputStrings => input.map<String>((SourceLine line) => line.text);
+  String get inputAsString => inputStrings.join('\n');
 
   /// The index of this sample within the dardoc comment it came from.
   final int index;

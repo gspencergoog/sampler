@@ -75,21 +75,10 @@ ExpansionPanel createExpansionPanel(CodeSample sample, {bool isExpanded = false}
     },
     body: ListTile(
       title: HighlightView(
-        // The original code to be highlighted
-        sample.output,
-
-        // Specify language
-        // It is recommended to give it a value for performance
+        sample.inputAsString,
         language: 'dart',
-
-        // Specify highlight theme
-        // All available themes are listed in `themes` folder
         theme: githubTheme,
-
-        // Specify padding
         padding: const EdgeInsets.all(12),
-
-        // Specify text style
         textStyle: const TextStyle(
           fontFamily: 'Fira Code',
           fontSize: 12,
