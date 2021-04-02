@@ -42,20 +42,22 @@ function install_result() (
   mkdir -p "$platform"
   case "$platform" in
     linux)
-      cp -r "$REPO_DIR"/packages/sampler/build/linux/x64/release/bundle/* "linux"
-      tar cvJf "$platform.tar.xz" "$platform"
+      mkdir -p "linux/sampler"
+      cp -r "$REPO_DIR"/packages/sampler/build/linux/x64/release/bundle/* "linux/sampler"
+      (cd linux; tar cvJf "../$platform.tar.xz" "sampler")
       git add "$platform.tar.xz"
       ;;
     macos)
       cp -r "$REPO_DIR/packages/sampler/build/macos/Build/Products/Release/sampler.app" "macos/sampler.app"
       rm -f "$platform.zip" || true
-      zip -r "$platform.zip" "$platform"
+      (cd macos; zip -r "../$platform.zip" sampler.app)
       git add "$platform.zip"
       ;;
     windows)
-      cp -r "$REPO_DIR"/packages/sampler/build/windows/runner/Release/* "windows"
+      mkdir -p "windows/sampler"
+      cp -r "$REPO_DIR"/packages/sampler/build/windows/runner/Release/* "windows/sampler"
       rm -f "$platform.zip" || true
-      7z a -r "$platform.zip" "$platform" 1> /dev/null 2>&1 || echo "Failed to zip Windows binary."
+      (cd windows; 7z a -r "../$platform.zip" "sampler") 1> /dev/null 2>&1 || echo "Failed to zip Windows binary."
       git add "$platform.zip"
       ;;
     *)
