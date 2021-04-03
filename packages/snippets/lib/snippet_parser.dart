@@ -73,7 +73,7 @@ class SnippetDartdocParser {
       // Snippet input comes in with the comment markers stripped, so we add them
       // back to make it conform to the source format, so we can use the same
       // parser for editing samples as we do for processing docs.
-      ...input.readAsLinesSync().map<String>((String line) => '/// $line'),
+      ...input.readAsLinesSync().map<String>((String line) => '/// $line'.trimRight()),
       '/// {@end-tool}',
     ];
     for (final String line in inputStrings) {
@@ -187,34 +187,38 @@ class SnippetDartdocParser {
               file: line.file?.path, line: line.line);
         }
         if (_dartDocSampleEndRegex.hasMatch(trimmedLine)) {
-          if (block.isNotEmpty) {
-            switch (snippetArgs.first) {
-              case 'snippet':
-                samples.add(
-                  SnippetSample(block, index: index++),
-                );
-                break;
-              case 'sample':
-                samples.add(
-                  ApplicationSample(
-                    input: block,
-                    args: snippetArgs,
-                    index: index++,
-                  ),
-                );
-                break;
-              case 'dartpad':
-                samples.add(
-                  DartpadSample(
-                    input: block,
-                    args: snippetArgs,
-                    index: index++,
-                  ),
-                );
-                break;
-              default:
-                throw SnippetException('Unknown snippet type ${snippetArgs.first}');
-            }
+          switch (snippetArgs.first) {
+            case 'snippet':
+              samples.add(
+                SnippetSample(
+                  block,
+                  index: index++,
+                  lineProto: line,
+                ),
+              );
+              break;
+            case 'sample':
+              samples.add(
+                ApplicationSample(
+                  input: block,
+                  args: snippetArgs,
+                  index: index++,
+                  lineProto: line,
+                ),
+              );
+              break;
+            case 'dartpad':
+              samples.add(
+                DartpadSample(
+                  input: block,
+                  args: snippetArgs,
+                  index: index++,
+                  lineProto: line,
+                ),
+              );
+              break;
+            default:
+              throw SnippetException('Unknown snippet type ${snippetArgs.first}');
           }
           snippetArgs = <String>[];
           block = <SourceLine>[];

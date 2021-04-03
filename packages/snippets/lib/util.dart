@@ -150,12 +150,13 @@ String interpolateTemplate(
   }
 
   return template.replaceAllMapped(moustacheRegExp, (Match match) {
-    if (match[1] == 'description') {
+    final String name = match[1]!;
+    if (name == 'description') {
       // Place the description into a comment.
       final List<String> description = injections
-          .firstWhere((TemplateInjection tuple) => tuple.name == match[1])
+          .firstWhere((TemplateInjection tuple) => tuple.name == name)
           .contents
-          .map<String>((SourceLine line) => '// ${line.text}')
+          .map<String>((SourceLine line) => '// ${line.text}'.trimRight())
           .toList();
       // Remove any leading/trailing empty comment lines.
       // We don't want to remove ALL empty comment lines, only the ones at the
@@ -166,18 +167,20 @@ String interpolateTemplate(
       while (description.isNotEmpty && description.first == '// ') {
         description.removeAt(0);
       }
-      return wrapSectionMarker(description, name: 'description');
+      return wrapSectionMarker(description, name: name);
     } else {
       final int componentIndex =
-          injections.indexWhere((TemplateInjection injection) => injection.name == match[1]);
-      if (componentIndex == -1) {
+          injections.indexWhere((TemplateInjection injection) => injection.name == name);
+      if (metadata[match[1]] != null && componentIndex == -1) {
         // If the match isn't found in the injections, then just remove the
         // mustache reference, since we want to allow the sections to be
         // "optional" in the input: users shouldn't be forced to add an empty
         // "```dart preamble" section if that section would be empty.
-        return (metadata[match[1]] ?? '').toString();
+        return (metadata[name]!).toString();
       }
-      return wrapSectionMarker(injections[componentIndex].stringContents, name: match[1]!);
+      return wrapSectionMarker(
+          componentIndex >= 0 ? injections[componentIndex].stringContents : <String>[],
+          name: name);
     }
   }).trim();
 }

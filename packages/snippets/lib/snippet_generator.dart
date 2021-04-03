@@ -278,16 +278,6 @@ class SnippetGenerator {
     return file.readAsStringSync(encoding: utf8);
   }
 
-  String _addLineNumbers(String app) {
-    final StringBuffer buffer = StringBuffer();
-    int count = 0;
-    for (final String line in app.split('\n')) {
-      count++;
-      buffer.writeln('${count.toString().padLeft(5, ' ')}: $line');
-    }
-    return buffer.toString();
-  }
-
   String generateHtml(CodeSample sample) {
     final String skeleton = _loadFileAsUtf8(configuration.getHtmlSkeletonFile(sample.type));
     return interpolateSkeleton(sample, skeleton);
@@ -342,7 +332,7 @@ class SnippetGenerator {
             templateFile.absolute.path.contains(flutterRoot.absolute.path)
                 ? path.relative(templateFile.absolute.path, from: flutterRoot.absolute.path)
                 : templateFile.absolute.path;
-        String app = interpolateTemplate(
+        sample.output = interpolateTemplate(
           snippetData,
           addSectionMarkers
               ? '/// Template: $templateRelativePath\n$templateContents'
@@ -351,13 +341,6 @@ class SnippetGenerator {
           addSectionMarkers: addSectionMarkers,
         );
 
-        try {
-          app = formatter.format(app);
-        } on FormatterException catch (exception) {
-          io.stderr.write('Code to format:\n${_addLineNumbers(app)}\n');
-          errorExit('Unable to format snippet app template: $exception');
-        }
-        sample.output = app;
         final int descriptionIndex =
             snippetData.indexWhere((TemplateInjection data) => data.name == 'description');
         final String descriptionString =

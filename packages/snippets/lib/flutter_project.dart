@@ -55,22 +55,33 @@ class FlutterProject {
       throw SnippetException('Unable to find original location for sample ${sample.id}');
     }
     final CodeSample foundBlock = foundBlocks.first;
-    final int startRange = foundBlock.input.first.startChar;
-    final int endRange = foundBlock.input.last.endChar;
+    int startRange;
+    int endRange;
+    int startFirstLine;
+    String firstLine;
+    if (foundBlock.input.isEmpty) {
+      startRange = foundBlock.start.startChar - 1;
+      endRange = startRange;
+      startFirstLine = startRange;
+      firstLine = '';
+    } else {
+      startRange = foundBlock.input.first.startChar;
+      endRange = foundBlock.input.last.endChar;
+      // Back up from the start of range, and find the first newline.
+      final String contents = await frameworkFile.readAsString();
+      int cursor = startRange;
+      while (cursor >= 0 && contents[cursor] != '\n') {
+        cursor--;
+      }
+      startFirstLine = contents[cursor] == '\n' ? cursor + 1 : cursor;
+      // Move forward from the start of range, and find the first newline.
+      cursor = startRange;
+      while (cursor < contents.length && contents[cursor] != '\n') {
+        cursor++;
+      }
+      firstLine = contents.substring(startFirstLine, cursor);
+    }
 
-    // Back up from the start of range, and find the first newline.
-    final String contents = await frameworkFile.readAsString();
-    int cursor = startRange;
-    while (cursor >= 0 && contents[cursor] != '\n') {
-      cursor--;
-    }
-    final int startFirstLine = contents[cursor] == '\n' ? cursor + 1 : cursor;
-    // Move forward from the start of range, and find the first newline.
-    cursor = startRange;
-    while (cursor < contents.length && contents[cursor] != '\n') {
-      cursor++;
-    }
-    final String firstLine = contents.substring(startFirstLine, cursor);
     return <String, int>{
       'startRange': startFirstLine,
       'endRange': endRange,
@@ -83,6 +94,10 @@ class FlutterProject {
     final String commentMarker = '${' ' * indent}///';
     final List<String> result = <String>[commentMarker]; // add a blank line at the beginning.
     for (final String section in sectionOrder) {
+      if (!sections.containsKey(section) || sections[section]!.isEmpty) {
+        // Skip missing/empty sections entirely.
+        continue;
+      }
       final String dartdocSection = section.replaceFirst(RegExp(r'code-?'), ' ').trimRight();
       final List<String> sectionContents = sections[section]!;
       final int sectionIndent = getIndent(sectionContents.first);
@@ -90,8 +105,9 @@ class FlutterProject {
         result.add('$commentMarker ```dart$dartdocSection');
       }
       result.addAll(sections[section]!.map<String>((String line) {
+        // Remove the base indent and any trailing spaces.
         line = line.substring(math.min(math.min(sectionIndent, getIndent(line)), line.length));
-        return line.isEmpty ? commentMarker : '$commentMarker $line';
+        return '$commentMarker $line'.trimRight();
       }));
       if (section != 'description') {
         result.add('$commentMarker ```');
@@ -127,11 +143,16 @@ class FlutterProject {
             sections[currentSection]!
                 .removeRange(firstTrailingEmpty, sections[currentSection]!.length);
           }
+          // Remove the section if it's empty.
+          if (sections[currentSection]!.isEmpty) {
+            sections.remove(currentSection);
+          }
           currentSection = null;
           firstTrailingEmpty = -1;
         }
       } else {
         if (currentSection != null) {
+          // Skip empty lines at the beginning of a section.
           final bool isEmpty = line.trim().isEmpty;
           if (sections[currentSection]!.isEmpty && isEmpty) {
             continue;
@@ -161,20 +182,17 @@ class FlutterProject {
       // Re-parse the original file to find the current char range for the
       // original example.
       final Map<String, int> rangesAndIndents = await _findReplacementRangeAndIndents();
+      final int startRange = rangesAndIndents['startRange']!;
+      final int endRange = rangesAndIndents['endRange']!;
       final File frameworkFile = sample.start.file!;
       String frameworkContents = await frameworkFile.readAsString();
-      print('Ranges: $rangesAndIndents');
-      print(
-          'Start char: ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']! - 1)} [${frameworkContents.codeUnitAt(rangesAndIndents['startRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['startRange']! + 1)}');
-      print(
-          'End char: ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']! - 1)} [${frameworkContents.codeUnitAt(rangesAndIndents['endRange']!)}] ${frameworkContents.codeUnitAt(rangesAndIndents['endRange']! + 1)}');
 
       // 3) Create a substitute example, and replace the char range with the new example.
       final String replacement =
           _buildSampleReplacement(sections, sectionOrder, rangesAndIndents['firstIndent']!);
       // 4) Rewrite the original framework file.
       frameworkContents = frameworkContents.replaceRange(
-          rangesAndIndents['startRange']!, rangesAndIndents['endRange']!, replacement);
+          startRange, endRange, startRange == endRange ? '\n$replacement' : replacement);
       await frameworkFile.writeAsString(frameworkContents);
     } on SnippetException catch (e) {
       return e.message;

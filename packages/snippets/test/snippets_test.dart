@@ -13,7 +13,7 @@ import 'package:snippets/snippets.dart';
 
 void main() {
   group('Generator', () {
-    final MemoryFileSystem memoryFileSystem = MemoryFileSystem();
+    late MemoryFileSystem memoryFileSystem = MemoryFileSystem();
     late SnippetConfiguration configuration;
     late SnippetGenerator generator;
     late Directory tmpDir;
@@ -42,6 +42,8 @@ void main() {
     }
 
     setUp(() {
+      // Create a new filesystem.
+      memoryFileSystem = MemoryFileSystem();
       tmpDir = memoryFileSystem.systemTempDirectory.createTempSync('flutter_snippets_test.');
       configuration = FlutterRepoSnippetConfiguration(
           flutterRoot: memoryFileSystem.directory(path.join(tmpDir.absolute.path, 'flutter')),
@@ -58,18 +60,13 @@ void main() {
 
 {{code-my-preamble}}
 
-main() {
-  {{code}}
-}
+{{code}}
 ''');
       <String>['dartpad', 'sample', 'snippet'].forEach(_writeSkeleton);
       generator = SnippetGenerator(
           configuration: configuration,
           filesystem: memoryFileSystem,
           flutterRoot: configuration.templatesDirectory.parent);
-    });
-    tearDown(() {
-      tmpDir.deleteSync(recursive: true);
     });
 
     test('generates samples', () async {
@@ -175,7 +172,7 @@ void main() {
           html,
           contains(
               '<div class="snippet-description">{@end-inject-html}A description of the snippet.\n\n'
-              'On several lines.{@inject-html}</div>\n'));
+              'On several lines.\n{@inject-html}</div>\n'));
       expect(html, contains('main() {'));
     });
 
@@ -262,7 +259,7 @@ void main() {
       expect(json['id'], equals('sample.src.widgets.foo.0'));
       expect(json['channel'], equals('stable'));
       expect(json['file'], equals('snippet_out.dart'));
-      expect(json['description'], equals('A description of the snippet.\n\nOn several lines.'));
+      expect(json['description'], equals('A description of the snippet.\n\nOn several lines.\n'));
       expect(json['sourcePath'], equals('packages/flutter/lib/src/widgets/foo.dart'));
     });
   });

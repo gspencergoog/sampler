@@ -103,7 +103,8 @@ class _DetailViewState extends State<DetailView> {
                     TextButton(
                         child: Text(project == null ? 'EXTRACT SAMPLE' : 'RE-EXTRACT SAMPLE'),
                         onPressed: _extractSample),
-                  if (project != null && !exporting) OutputLocation(location: project!.location),
+                  if (project != null && !exporting)
+                    OutputLocation(location: project!.location.childDirectory('lib')),
                 ],
               ),
               ActionPanel(
