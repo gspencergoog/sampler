@@ -78,7 +78,7 @@ abstract class CodeSample {
     this.input, {
     required this.index,
     required SourceLine lineProto,
-  })   : assert(args.isNotEmpty),
+  })  : assert(args.isNotEmpty),
         _lineProto = lineProto,
         id = _createNameFromSource(args.first, lineProto.file ?? input.first.file!, index);
 
@@ -144,7 +144,7 @@ class SnippetSample extends CodeSample {
     List<SourceLine> input, {
     required int index,
     required SourceLine lineProto,
-  })   : assumptions = <SourceLine>[],
+  })  : assumptions = <SourceLine>[],
         super(
           <String>['snippet'],
           input,
@@ -224,7 +224,7 @@ class ApplicationSample extends CodeSample {
     required List<String> args,
     required int index,
     required SourceLine lineProto,
-  })   : assert(args.isNotEmpty),
+  })  : assert(args.isNotEmpty),
         super(args, input, index: index, lineProto: lineProto);
 
   @override
@@ -244,9 +244,107 @@ class DartpadSample extends ApplicationSample {
     required List<String> args,
     required int index,
     required SourceLine lineProto,
-  })   : assert(args.isNotEmpty),
+  })  : assert(args.isNotEmpty),
         super(input: input, args: args, index: index, lineProto: lineProto);
 
   @override
   String get type => 'dartpad';
+}
+
+enum SourceElementType {
+  classType,
+  fieldType,
+  methodType,
+  constructorType,
+  typedefType,
+  topLevelVariableType,
+  functionType,
+  unknownType,
+}
+
+String sourceElementTypeAsString(SourceElementType type) {
+  switch (type) {
+    case SourceElementType.classType:
+      return 'class';
+    case SourceElementType.fieldType:
+      return 'field';
+    case SourceElementType.methodType:
+      return 'method';
+    case SourceElementType.constructorType:
+      return 'constructor';
+    case SourceElementType.typedefType:
+      return 'typedef';
+    case SourceElementType.topLevelVariableType:
+      return 'variable';
+    case SourceElementType.functionType:
+      return 'function';
+    case SourceElementType.unknownType:
+      return 'unknown';
+  }
+}
+
+class SourceElement {
+  // This uses a factory so that the default for the lists can be modifiable
+  // lists.
+  factory SourceElement(
+      SourceElementType type,
+      String name,
+      int startPos, {
+        String className = '',
+        List<SourceLine>? comment,
+        int startLine = -1,
+        List<CodeSample>? samples,
+      }) {
+    return SourceElement._(
+      type,
+      name,
+      startPos,
+      className: className,
+      comment: comment ?? <SourceLine>[],
+      startLine: startLine,
+      samples: samples ?? <CodeSample>[],
+    );
+  }
+
+  const SourceElement._(
+    this.type,
+    this.name,
+    this.startPos, {
+    this.className = '',
+    this.comment = const <SourceLine>[],
+    this.startLine = -1,
+    this.samples = const <CodeSample>[],
+  });
+
+  final SourceElementType type;
+  final String name;
+  final String className;
+  final int startPos;
+  final int startLine;
+  final List<SourceLine> comment;
+  final List<CodeSample> samples;
+
+  String get elementName => className.isEmpty ? name : '$className.$name';
+
+  String get typeAsString => sourceElementTypeAsString(type);
+
+  SourceElement copyWith({
+    SourceElementType? type,
+    String? name,
+    int? startPos,
+    String? className,
+    List<SourceLine>? comment,
+    int? startLine,
+    List<CodeSample>? samples,
+  }) {
+    return SourceElement(
+      type ?? this.type,
+      name ?? this.name,
+      startPos ?? this.startPos,
+      className: className ?? this.className,
+      comment: comment ?? this.comment,
+      startLine: startLine ?? this.startLine,
+      samples: samples ?? this.samples,
+    );
+  }
 }

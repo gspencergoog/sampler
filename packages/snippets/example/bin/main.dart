@@ -27,7 +27,10 @@ void main(List<String> argList) {
   final SnippetDartdocParser snippetParser = SnippetDartdocParser();
 
   final File file = filesystem.file(args['file']! as String);
-  final List<CodeSample> samples = snippetParser.parseWithAssumptions(getFileElements(file), file).toList();
+  final List<SourceElement> elements = getFileElements(file).toList();
+  snippetParser.parseFromComments(elements);
+  snippetParser.parseAndAddAssumptions(elements, file);
+  final List<CodeSample> samples = elements.expand<CodeSample>((SourceElement element) => element.samples).toList();
 
   final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {

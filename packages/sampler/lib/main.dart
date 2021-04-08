@@ -16,9 +16,9 @@ import 'new_sample.dart';
 const String _kFileOption = 'file';
 const String _kFlutterRootOption = 'flutter-root';
 
-const String _kNewSampleSelectView = '/newSampleSelectView';
-const String _kDetailView = '/detailView';
-const String _kNewSampleView = '/newSampleView';
+const String kNewSampleSelectView = '/newSampleSelectView';
+const String kDetailView = '/detailView';
+const String kNewSampleView = '/newSampleView';
 
 void main(List<String> argv) {
   final ArgParser parser = ArgParser();
@@ -57,36 +57,13 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
       ),
       routes: <String, WidgetBuilder>{
-        _kDetailView: (BuildContext context) => const DetailView(),
-        _kNewSampleSelectView: (BuildContext context) => const NewSampleSelect(title: 'Add a Sample'),
+        kDetailView: (BuildContext context) => const DetailView(),
+        kNewSampleSelectView: (BuildContext context) => const NewSampleSelect(title: 'Add a Sample'),
+        kNewSampleView: (BuildContext context) => const DetailView(insertNewSample: true),
       },
       home: const Sampler(title: _title),
     );
   }
-}
-
-ExpansionPanel createExpansionPanel(CodeSample sample, {bool isExpanded = false}) {
-  return ExpansionPanel(
-    headerBuilder: (BuildContext context, bool isExpanded) {
-      return ListTile(
-        title: Text(
-            '${sample.start.element}${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line} (${sample.type})'),
-        trailing: TextButton(
-          child: const Text('SELECT'),
-          onPressed: () {
-            Model.instance.currentSample = sample;
-            Navigator.of(context).pushNamed(_kDetailView).then((Object? result) {
-              Model.instance.currentSample = null;
-            });
-          },
-        ),
-      );
-    },
-    body: ListTile(
-      title: CodePanel(code: sample.inputAsString),
-    ),
-    isExpanded: isExpanded,
-  );
 }
 
 class Sampler extends StatefulWidget {
@@ -132,6 +109,30 @@ class _SamplerState extends State<Sampler> {
     }
   }
 
+  ExpansionPanel _createExpansionPanel(CodeSample sample, {bool isExpanded = false}) {
+    return ExpansionPanel(
+      headerBuilder: (BuildContext context, bool isExpanded) {
+        return ListTile(
+          title: Text(
+              '${sample.start.element}${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line} (${sample.type})'),
+          trailing: TextButton(
+            child: const Text('SELECT'),
+            onPressed: () {
+              Model.instance.currentSample = sample;
+              Navigator.of(context).pushNamed(kDetailView).then((Object? result) {
+                Model.instance.currentSample = null;
+              });
+            },
+          ),
+        );
+      },
+      body: ListTile(
+        title: CodePanel(code: sample.inputAsString),
+      ),
+      isExpanded: isExpanded,
+    );
+  }
+
   void _modelUpdated() {
     setState(() {
       // model updated, so force widget update.
@@ -172,18 +173,18 @@ class _SamplerState extends State<Sampler> {
   }
 
   String _getSampleStats() {
-    if (Model.instance.samples == null || Model.instance.samples!.isEmpty) {
+    if (Model.instance.samples == null || Model.instance.samples.isEmpty) {
       return 'No samples loaded.';
     }
-    final int snippets = Model.instance.samples!.whereType<SnippetSample>().length;
-    final int applications = Model.instance.samples!
+    final int snippets = Model.instance.samples.whereType<SnippetSample>().length;
+    final int applications = Model.instance.samples
         .where((CodeSample sample) => sample is ApplicationSample && sample is! DartpadSample)
         .length;
-    final int dartpads = Model.instance.samples!.whereType<DartpadSample>().length;
+    final int dartpads = Model.instance.samples.whereType<DartpadSample>().length;
     final int total = snippets + applications + dartpads;
     final bool allOneKind = total == snippets || total == applications || total == dartpads;
     return <String>[
-      if (!allOneKind) '${Model.instance.samples!.length} samples: ',
+      if (!allOneKind) '${Model.instance.samples.length} samples: ',
       if (snippets > 0) '$snippets snippets',
       if (applications > 0) '$applications application samples',
       if (dartpads > 0) '$dartpads dartpad samples'
@@ -193,10 +194,10 @@ class _SamplerState extends State<Sampler> {
   @override
   Widget build(BuildContext context) {
     List<ExpansionPanel> panels = const <ExpansionPanel>[];
-    List<CodeSample> samples = const <CodeSample>[];
+    Iterable<CodeSample> samples = const <CodeSample>[];
     if (Model.instance.samples != null) {
       if (Model.instance.currentSample == null) {
-        samples = Model.instance.samples!;
+        samples = Model.instance.samples;
       } else {
         samples = <CodeSample>[Model.instance.currentSample!];
       }
@@ -204,7 +205,7 @@ class _SamplerState extends State<Sampler> {
       panels = samples.map<ExpansionPanel>(
         (CodeSample sample) {
           final ExpansionPanel result =
-              createExpansionPanel(sample, isExpanded: index == expandedIndex);
+              _createExpansionPanel(sample, isExpanded: index == expandedIndex);
           index++;
           return result;
         },
@@ -218,7 +219,7 @@ class _SamplerState extends State<Sampler> {
       floatingActionButton: Model.instance.workingFile != null ? FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
-          Navigator.of(context).pushNamed(_kNewSampleSelectView).then((Object? result) {
+          Navigator.of(context).pushNamed(kNewSampleSelectView).then((Object? result) {
             Model.instance.currentSample = null;
           });
         },

@@ -7,35 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:snippets/snippets.dart';
 
 import 'helper_widgets.dart';
+import 'main.dart';
 import 'model.dart';
-
-ExpansionPanel createExpansionPanel(SourceElement element, {bool isExpanded = false}) {
-  return ExpansionPanel(
-    headerBuilder: (BuildContext context, bool isExpanded) {
-      return ListTile(
-        title:
-            Text('${element.elementName} at line ${element.startLine} (${element.typeAsString})'),
-        trailing: TextButton(
-          child: const Text('ADD SAMPLE'),
-          onPressed: () {
-            Model.instance.currentElement = element;
-            Navigator.of(context).pushNamed('/newSampleView').then((Object? result) {
-              Model.instance.currentElement = null;
-            });
-          },
-        ),
-      );
-    },
-    body: element.comment.isNotEmpty
-        ? ListTile(
-            title: CodePanel(
-              code: element.comment.map<String>((SourceLine line) => line.text).join('\n'),
-            ),
-          )
-        : const SizedBox(),
-    isExpanded: isExpanded,
-  );
-}
 
 class NewSampleSelect extends StatefulWidget {
   const NewSampleSelect({Key? key, required this.title}) : super(key: key);
@@ -50,6 +23,34 @@ class _NewSampleSelectState extends State<NewSampleSelect> {
   bool get filesLoading => Model.instance.files == null;
   int expandedIndex = -1;
   TextEditingController editingController = TextEditingController();
+
+  ExpansionPanel _createExpansionPanel(SourceElement element, {bool isExpanded = false}) {
+    return ExpansionPanel(
+      headerBuilder: (BuildContext context, bool isExpanded) {
+        return ListTile(
+          title:
+          Text('${element.elementName} at line ${element.startLine} (${element.typeAsString})'),
+          trailing: TextButton(
+            child: const Text('ADD SAMPLE'),
+            onPressed: () {
+              Model.instance.currentElement = element;
+              Navigator.of(context).pushNamed(kNewSampleView).then((Object? result) {
+                Model.instance.currentElement = null;
+              });
+            },
+          ),
+        );
+      },
+      body: element.comment.isNotEmpty
+          ? ListTile(
+        title: CodePanel(
+          code: element.comment.map<String>((SourceLine line) => line.text).join('\n'),
+        ),
+      )
+          : const SizedBox(),
+      isExpanded: isExpanded,
+    );
+  }
 
   @override
   void initState() {
@@ -100,7 +101,7 @@ class _NewSampleSelectState extends State<NewSampleSelect> {
       panels = elements.map<ExpansionPanel>(
         (SourceElement element) {
           final ExpansionPanel result =
-              createExpansionPanel(element, isExpanded: index == expandedIndex);
+              _createExpansionPanel(element, isExpanded: index == expandedIndex);
           index++;
           return result;
         },

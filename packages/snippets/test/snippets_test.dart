@@ -93,7 +93,7 @@ void main() {
       final SnippetDartdocParser sampleParser = SnippetDartdocParser();
       const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
       const int sourceLine = 222;
-      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+      final SourceElement element = sampleParser.parseFromDartdocToolFile(
         inputFile,
         element: 'MyElement',
         template: 'template',
@@ -101,17 +101,18 @@ void main() {
         sourceFile: memoryFileSystem.file(sourcePath),
         type: 'sample',
       );
-      expect(samples, isNotEmpty);
-      samples.first.metadata.addAll(<String, Object?>{
+
+      expect(element.samples, isNotEmpty);
+      element.samples.first.metadata.addAll(<String, Object?>{
         'channel': 'stable',
       });
       final String code = generator.generateCode(
-        samples.first,
+        element.samples.first,
         output: outputFile,
       );
       expect(code, contains('// Flutter code sample for MyElement'));
       final String html = generator.generateHtml(
-        samples.first,
+        element.samples.first,
       );
       expect(html, contains('<div>HTML Bits</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
@@ -151,20 +152,20 @@ void main() {
       final SnippetDartdocParser sampleParser = SnippetDartdocParser();
       const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
       const int sourceLine = 222;
-      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+      final SourceElement element = sampleParser.parseFromDartdocToolFile(
         inputFile,
         element: 'MyElement',
         startLine: sourceLine,
         sourceFile: memoryFileSystem.file(sourcePath),
         type: 'snippet',
       );
-      expect(samples, isNotEmpty);
-      samples.first.metadata.addAll(<String, Object>{
+      expect(element.samples, isNotEmpty);
+      element.samples.first.metadata.addAll(<String, Object>{
         'channel': 'stable',
       });
-      final String code = generator.generateCode(samples.first);
+      final String code = generator.generateCode(element.samples.first);
       expect(code, contains('// A description of the snippet.'));
-      final String html = generator.generateHtml(samples.first);
+      final String html = generator.generateHtml(element.samples.first);
       expect(html, contains('<div>HTML Bits</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
       expect(html, contains(r'  print(&#39;The actual $name.&#39;);'));
@@ -195,7 +196,7 @@ void main() {
       final SnippetDartdocParser sampleParser = SnippetDartdocParser();
       const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
       const int sourceLine = 222;
-      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+      final SourceElement element = sampleParser.parseFromDartdocToolFile(
         inputFile,
         element: 'MyElement',
         template: 'template',
@@ -203,13 +204,13 @@ void main() {
         sourceFile: memoryFileSystem.file(sourcePath),
         type: 'dartpad',
       );
-      expect(samples, isNotEmpty);
-      samples.first.metadata.addAll(<String, Object>{
+      expect(element.samples, isNotEmpty);
+      element.samples.first.metadata.addAll(<String, Object>{
         'channel': 'stable',
       });
-      final String code = generator.generateCode(samples.first);
+      final String code = generator.generateCode(element.samples.first);
       expect(code, contains('// Flutter code sample for MyElement'));
-      final String html = generator.generateHtml(samples.first);
+      final String html = generator.generateHtml(element.samples.first);
       expect(html, contains('<div>HTML Bits (DartPad-style)</div>'));
       expect(html, contains('<div>More HTML Bits</div>'));
       expect(
@@ -242,7 +243,7 @@ void main() {
       final SnippetDartdocParser sampleParser = SnippetDartdocParser();
       const String sourcePath = 'packages/flutter/lib/src/widgets/foo.dart';
       const int sourceLine = 222;
-      final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+      final SourceElement element = sampleParser.parseFromDartdocToolFile(
         inputFile,
         element: 'MyElement',
         template: 'template',
@@ -250,9 +251,9 @@ void main() {
         sourceFile: memoryFileSystem.file(sourcePath),
         type: 'sample',
       );
-      expect(samples, isNotEmpty);
-      samples.first.metadata.addAll(<String, Object>{'channel': 'stable'});
-      generator.generateCode(samples.first, output: outputFile);
+      expect(element.samples, isNotEmpty);
+      element.samples.first.metadata.addAll(<String, Object>{'channel': 'stable'});
+      generator.generateCode(element.samples.first, output: outputFile);
       expect(expectedMetadataFile.existsSync(), isTrue);
       final Map<String, dynamic> json =
           jsonDecode(expectedMetadataFile.readAsStringSync()) as Map<String, dynamic>;

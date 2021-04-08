@@ -18,6 +18,7 @@ import 'util.dart';
 
 class FlutterProject {
   const FlutterProject(
+    this.element,
     this.sample, {
     required this.location,
     String? name,
@@ -28,6 +29,7 @@ class FlutterProject {
 
   final FileSystem filesystem;
   final ProcessManager processManager;
+  final SourceElement element;
   final CodeSample sample;
   final Directory location;
   final String? _name;
@@ -41,17 +43,18 @@ class FlutterProject {
     final File frameworkFile = sample.start.file!;
 
     final Iterable<SourceElement> frameworkFileElements = getFileElements(frameworkFile);
-    final List<List<SourceLine>> frameworkComments = frameworkFileElements
-        .map<List<SourceLine>>((SourceElement element) => element.comment)
-        .where((List<SourceLine> lines) {
-      return lines.first.element == sample.element;
-    }).toList();
+    final Iterable<SourceElement> frameworkComments = frameworkFileElements
+        .where((SourceElement element) {
+      return element.elementName == this.element.elementName;
+    });
     if (frameworkComments.length != 1) {
-      throw SnippetException('Unable to find original comment block for sample ${sample.id}');
+      throw SnippetException('Unable to find original comment block for sample ${sample.id} in element ${element.elementName}');
     }
     final SnippetDartdocParser parser = SnippetDartdocParser();
+    final SourceElement foundElement = frameworkComments.single;
+    parser.parseComment(foundElement);
     final List<CodeSample> foundBlocks =
-        parser.parseComment(frameworkComments.first).where((CodeSample foundSample) {
+        foundElement.samples.where((CodeSample foundSample) {
       return foundSample.id == sample.id;
     }).toList();
     if (foundBlocks.length != 1) {

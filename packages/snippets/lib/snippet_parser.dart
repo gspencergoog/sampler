@@ -4,7 +4,6 @@
 
 import 'package:file/file.dart';
 
-import 'analysis.dart';
 import 'data_types.dart';
 import 'util.dart';
 
@@ -33,14 +32,13 @@ class SnippetDartdocParser {
 
   /// Extracts the samples from the Dart files in [files], writes them
   /// to disk, and adds them to the appropriate [sectionMap] or [sampleMap].
-  Iterable<CodeSample> parseWithAssumptions(
+  void parseAndAddAssumptions(
     Iterable<SourceElement> elements,
     File assumptionsFile, {
     bool silent = true,
   }) {
-    final Iterable<CodeSample> samples = parseFromComments(getComments(elements), silent: silent);
     final List<SourceLine> assumptions = parseAssumptions(assumptionsFile);
-    for (final CodeSample sample in samples) {
+    for (final CodeSample sample in elements.expand<CodeSample>((SourceElement element) => element.samples)) {
       if (sample is SnippetSample) {
         sample.assumptions = assumptions;
       }
@@ -51,11 +49,9 @@ class SnippetDartdocParser {
         'sourceLine': sample.start.line,
       });
     }
-
-    return samples;
   }
 
-  List<CodeSample> parseFromDartdocToolFile(
+  SourceElement parseFromDartdocToolFile(
     File input, {
     int? startLine,
     String? element,
@@ -83,9 +79,10 @@ class SnippetDartdocParser {
       );
       lineNumber++;
     }
-    // No need to get a preamble: dartdoc won't give that to us.
-    final List<CodeSample> samples = parseFromComments(<List<SourceLine>>[lines], silent: silent);
-    for (final CodeSample sample in samples) {
+    // No need to get assumptions: dartdoc won't give that to us.
+    final SourceElement newElement = SourceElement(SourceElementType.unknownType, element!, -1, comment: lines);
+    parseFromComments(<SourceElement>[newElement], silent: silent);
+    for (final CodeSample sample in newElement.samples) {
       sample.metadata.addAll(<String, Object?>{
         'id': sample.id,
         'element': sample.element,
@@ -93,7 +90,7 @@ class SnippetDartdocParser {
         'sourceLine': sample.start.line,
       });
     }
-    return samples;
+    return newElement;
   }
 
   List<SourceLine> parseAssumptions(File file) {
@@ -134,18 +131,20 @@ class SnippetDartdocParser {
     return preamble;
   }
 
-  List<CodeSample> parseFromComments(
-    Iterable<List<SourceLine>> comments, {
-    bool silent = false,
+  void parseFromComments(
+    Iterable<SourceElement> elements, {
+    bool silent = true,
   }) {
     int dartpadCount = 0;
     int sampleCount = 0;
     int snippetCount = 0;
 
-    final List<CodeSample> samples = <CodeSample>[];
-    for (final List<SourceLine> commentLines in comments) {
-      final List<CodeSample> newSamples = parseComment(commentLines);
-      for (final CodeSample sample in newSamples) {
+    for (final SourceElement element in elements) {
+      if (element.comment.isEmpty) {
+        continue;
+      }
+      parseComment(element);
+      for (final CodeSample sample in element.samples) {
         switch (sample.runtimeType) {
           case ApplicationSample:
             sampleCount++;
@@ -158,7 +157,6 @@ class SnippetDartdocParser {
             break;
         }
       }
-      samples.addAll(newSamples);
     }
 
     if (!silent) {
@@ -167,10 +165,9 @@ class SnippetDartdocParser {
           '  $sampleCount non-dartpad sample code sections, and\n'
           '  $dartpadCount dartpad sections.\n');
     }
-    return samples;
   }
 
-  List<CodeSample> parseComment(List<SourceLine> comments) {
+  void parseComment(SourceElement element) {
     // Whether or not we're in a snippet code sample (with template) specifically.
     bool inSnippet = false;
     // Whether or not we're in a '```dart' segment.
@@ -180,7 +177,7 @@ class SnippetDartdocParser {
     final List<CodeSample> samples = <CodeSample>[];
 
     int index = 0;
-    for (final SourceLine line in comments) {
+    for (final SourceLine line in element.comment) {
       final String trimmedLine = line.text.trim();
       if (inSnippet) {
         if (!trimmedLine.startsWith(_dartDocPrefix)) {
@@ -279,7 +276,8 @@ class SnippetDartdocParser {
         }
       }
     }
-    return samples;
+    element.samples.clear();
+    element.samples.addAll(samples);
   }
 
   /// Helper to process arguments given as a (possibly quoted) string.

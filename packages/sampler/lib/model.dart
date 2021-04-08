@@ -69,8 +69,8 @@ class Model extends ChangeNotifier {
       return;
     }
     _workingFile = null;
-    _workingSample = null;
-    _samples = null;
+    _currentSample = null;
+    _currentElement = null;
     notifyListeners();
   }
 
@@ -81,47 +81,49 @@ class Model extends ChangeNotifier {
     _workingFile = value;
 
     // Clear existing selections if the file has changed.
-    _workingSample = null;
-    _samples = null;
+    _currentSample = null;
+    _currentElement = null;
 
     if (_workingFile == null) {
       return;
     }
+ 
     final File file = filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path));
     _elements = getFileElements(file);
-    _samples = _dartdocParser.parseWithAssumptions(_elements!, file, silent: true).toList();
-    for (final CodeSample sample in samples!) {
+    _dartdocParser.parseFromComments(_elements!);
+    _dartdocParser.parseAndAddAssumptions(_elements!, file, silent: true);
+    for (final CodeSample sample in samples) {
       _snippetGenerator.generateCode(sample, addSectionMarkers: true, includeAssumptions: true);
     }
-    print('Loaded ${samples!.length} samples from ${_workingFile!.path}');
+    print('Loaded ${samples.length} samples from ${_workingFile!.path}');
     notifyListeners();
   }
 
-  CodeSample? _workingSample;
+  CodeSample? _currentSample;
 
-  CodeSample? get currentSample => _workingSample;
+  CodeSample? get currentSample => _currentSample;
 
   set currentSample(CodeSample? value) {
-    if (value != _workingSample) {
-      _workingSample = value;
+    if (value != _currentSample) {
+      _currentSample = value;
       notifyListeners();
     }
   }
 
-  SourceElement? _workingElement;
+  SourceElement? _currentElement;
 
-  SourceElement? get currentElement => _workingElement;
+  SourceElement? get currentElement => _currentElement;
 
   set currentElement(SourceElement? value) {
-    if (value != _workingElement) {
-      _workingElement = value;
+    if (value != _currentElement) {
+      _currentElement = value;
       notifyListeners();
     }
   }
 
-  List<CodeSample>? _samples;
-
-  List<CodeSample>? get samples => _samples;
+  Iterable<CodeSample> get samples {
+    return _elements?.expand<CodeSample>((SourceElement element) => element.samples) ?? const <CodeSample>[];
+  } 
 
   Iterable<SourceElement>? _elements;
 

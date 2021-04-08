@@ -13,7 +13,9 @@ import 'helper_widgets.dart';
 import 'model.dart';
 
 class DetailView extends StatefulWidget {
-  const DetailView({Key? key}) : super(key: key);
+  const DetailView({Key? key, this.insertNewSample = false}) : super(key: key);
+
+  final bool insertNewSample;
 
   @override
   _DetailViewState createState() => _DetailViewState();
@@ -34,8 +36,12 @@ class _DetailViewState extends State<DetailView> {
       if (project == null) {
         final Directory outputLocation =
             Model.instance.filesystem.systemTempDirectory.createTempSync('flutter_sample.');
-        project = FlutterProject(Model.instance.currentSample!,
-            location: outputLocation, flutterRoot: Model.instance.flutterRoot);
+        project = FlutterProject(
+          Model.instance.currentElement!,
+          Model.instance.currentSample!,
+          location: outputLocation,
+          flutterRoot: Model.instance.flutterRoot,
+        );
       }
       compute(_doExport, project!).whenComplete(() {
         setState(() {
@@ -102,7 +108,11 @@ class _DetailViewState extends State<DetailView> {
                 children: <Widget>[
                   if (!exporting)
                     TextButton(
-                        child: Text(project == null ? 'EXTRACT SAMPLE' : 'RE-EXTRACT SAMPLE'),
+                        child: Text(
+                          project == null
+                              ? (widget.insertNewSample ? 'CREATE SAMPLE' : 'EXTRACT SAMPLE')
+                              : (widget.insertNewSample ? 'RECREATE SAMPLE' : 'RE-EXTRACT SAMPLE'),
+                        ),
                         onPressed: _extractSample),
                   if (project != null && !exporting)
                     OutputLocation(location: project!.location.childDirectory('lib')),

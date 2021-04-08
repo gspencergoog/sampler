@@ -169,7 +169,7 @@ void main(List<String> argList) {
       environment['SOURCE_LINE'] != null ? int.tryParse(environment['SOURCE_LINE']!) : null;
   final String sourcePath = environment['SOURCE_PATH'] ?? 'unknown.dart';
   final SnippetDartdocParser sampleParser = SnippetDartdocParser();
-  final List<CodeSample> samples = sampleParser.parseFromDartdocToolFile(
+  final SourceElement element = sampleParser.parseFromDartdocToolFile(
     input,
     startLine: sourceLine,
     element: elementName,
@@ -185,7 +185,7 @@ void main(List<String> argList) {
     'library': libraryName,
     'element': elementName,
   };
-  for (final CodeSample sample in samples) {
+  for (final CodeSample sample in element.samples) {
     sample.metadata.addAll(metadata);
     generator.generateCode(
       sample,

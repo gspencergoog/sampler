@@ -14,6 +14,16 @@ import 'package:pub_semver/pub_semver.dart';
 import 'data_types.dart';
 import 'interval_tree.dart';
 
+class _LineNumberInterval extends Interval<num, int> {
+  _LineNumberInterval(int start, int end, int line)
+      : super(start, end, line);
+
+  @override
+  int? mergePayload(Interval<num, int> other) {
+    return other.payload == -1 ? payload : other.payload;
+  }
+}
+
 Iterable<List<SourceLine>> getFileComments(File file) {
   return getComments(getFileElements(file));
 }
@@ -30,20 +40,6 @@ Iterable<SourceElement> getCommentElements(Iterable<SourceElement> elements) {
   return elements.where((SourceElement element) => element.comment.isNotEmpty);
 }
 
-Iterable<SourceElement> getFileElements(File file) {
-  final ParseStringResult parseResult = parseFile(
-      featureSet: FeatureSet.fromEnableFlags2(
-        // TODO(gspencergoog): Get the version string from the flutter --version
-        sdkLanguageVersion: Version(2, 12, 1),
-        flags: <String>[],
-      ),
-      path: file.absolute.path);
-  final _CommentVisitor<CompilationUnit> visitor = _CommentVisitor<CompilationUnit>(file);
-  visitor.visitCompilationUnit(parseResult.unit);
-  visitor.assignLineNumbers();
-  return visitor.elements;
-}
-
 // SourceElement? findElementByName(Iterable<SourceElement> elements, String name) {
 //   final Iterable<SourceElement> result = elements.where((SourceElement element) {
 //     if (element.className.isNotEmpty) {
@@ -57,83 +53,18 @@ Iterable<SourceElement> getFileElements(File file) {
 //   return result.single;
 // }
 
-
-enum SourceElementType {
-  classType,
-  fieldType,
-  methodType,
-  constructorType,
-  typedefType,
-  topLevelVariableType,
-  functionType,
-}
-
-String sourceElementTypeAsString(SourceElementType type) {
-  switch (type) {
-    case SourceElementType.classType:
-      return 'class';
-    case SourceElementType.fieldType:
-      return 'field';
-    case SourceElementType.methodType:
-      return 'method';
-    case SourceElementType.constructorType:
-      return 'constructor';
-    case SourceElementType.typedefType:
-      return 'typedef';
-    case SourceElementType.topLevelVariableType:
-      return 'variable';
-    case SourceElementType.functionType:
-      return 'function';
-  }
-}
-
-class SourceElement {
-  const SourceElement(
-    this.type,
-    this.name,
-    this.startPos, {
-    this.className = '',
-    this.comment = const <SourceLine>[],
-    this.startLine = -1,
-  });
-  final SourceElementType type;
-  final String name;
-  final String className;
-  final int startPos;
-  final int startLine;
-  final List<SourceLine> comment;
-
-  String get elementName => className.isEmpty ? name : '$className.$name';
-
-  String get typeAsString => sourceElementTypeAsString(type);
-
-  SourceElement copyWith({
-    SourceElementType? type,
-    String? name,
-    int? startPos,
-    String? className,
-    List<SourceLine>? comment,
-    int? startLine,
-  }) {
-    return SourceElement(
-      type ?? this.type,
-      name ?? this.name,
-      startPos ?? this.startPos,
-      className: className ?? this.className,
-      comment: comment ?? this.comment,
-      startLine: startLine ?? this.startLine,
-    );
-  }
-}
-
-class _LineNumberInterval extends Interval<num, int> {
-  _LineNumberInterval(int start, int end, int line)
-      : super(start, end, line);
-
-  @override
-  int? mergePayload(Interval<num, int> other) {
-    return other.payload == -1 ? payload : other.payload;
-  }
+Iterable<SourceElement> getFileElements(File file) {
+  final ParseStringResult parseResult = parseFile(
+      featureSet: FeatureSet.fromEnableFlags2(
+        // TODO(gspencergoog): Get the version string from the flutter --version
+        sdkLanguageVersion: Version(2, 12, 1),
+        flags: <String>[],
+      ),
+      path: file.absolute.path);
+  final _CommentVisitor<CompilationUnit> visitor = _CommentVisitor<CompilationUnit>(file);
+  visitor.visitCompilationUnit(parseResult.unit);
+  visitor.assignLineNumbers();
+  return visitor.elements;
 }
 
 class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
