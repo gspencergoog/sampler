@@ -5,14 +5,20 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
+import 'package:sampler/new_sample.dart';
 import 'package:snippets/snippets.dart';
 
 import 'detail_view.dart';
 import 'helper_widgets.dart';
 import 'model.dart';
+import 'new_sample.dart';
 
 const String _kFileOption = 'file';
 const String _kFlutterRootOption = 'flutter-root';
+
+const String _kNewSampleSelectView = '/newSampleSelectView';
+const String _kDetailView = '/detailView';
+const String _kNewSampleView = '/newSampleView';
 
 void main(List<String> argv) {
   final ArgParser parser = ArgParser();
@@ -51,7 +57,8 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
       ),
       routes: <String, WidgetBuilder>{
-        '/detailView': (BuildContext context) => const DetailView(),
+        _kDetailView: (BuildContext context) => const DetailView(),
+        _kNewSampleSelectView: (BuildContext context) => const NewSampleSelect(title: 'Add a Sample'),
       },
       home: const Sampler(title: _title),
     );
@@ -67,8 +74,10 @@ ExpansionPanel createExpansionPanel(CodeSample sample, {bool isExpanded = false}
         trailing: TextButton(
           child: const Text('SELECT'),
           onPressed: () {
-            Model.instance.workingSample = sample;
-            Navigator.of(context).pushNamed('/detailView');
+            Model.instance.currentSample = sample;
+            Navigator.of(context).pushNamed(_kDetailView).then((Object? result) {
+              Model.instance.currentSample = null;
+            });
           },
         ),
       );
@@ -147,6 +156,7 @@ class _SamplerState extends State<Sampler> {
       focusNode: focusNode,
       textEditingController: textEditingController,
       onFieldSubmitted: onFieldSubmitted,
+      hintText: 'Enter the name of a framework source file',
       trailing: Model.instance.workingFile != null
           ? IconButton(
               icon: const Icon(Icons.highlight_remove),
@@ -166,14 +176,18 @@ class _SamplerState extends State<Sampler> {
       return 'No samples loaded.';
     }
     final int snippets = Model.instance.samples!.whereType<SnippetSample>().length;
-    final int applications = Model.instance.samples!.whereType<ApplicationSample>().length;
+    final int applications = Model.instance.samples!
+        .where((CodeSample sample) => sample is ApplicationSample && sample is! DartpadSample)
+        .length;
     final int dartpads = Model.instance.samples!.whereType<DartpadSample>().length;
-    return '${Model.instance.samples!.length} samples found: ' +
-        <String>[
-          if (snippets > 0) '$snippets snippets',
-          if (applications > 0) '$applications application samples',
-          if (dartpads > 0) '$dartpads dartpad samples'
-        ].join(', ');
+    final int total = snippets + applications + dartpads;
+    final bool allOneKind = total == snippets || total == applications || total == dartpads;
+    return <String>[
+      if (!allOneKind) '${Model.instance.samples!.length} samples: ',
+      if (snippets > 0) '$snippets snippets',
+      if (applications > 0) '$applications application samples',
+      if (dartpads > 0) '$dartpads dartpad samples'
+    ].join(', ');
   }
 
   @override
@@ -181,10 +195,10 @@ class _SamplerState extends State<Sampler> {
     List<ExpansionPanel> panels = const <ExpansionPanel>[];
     List<CodeSample> samples = const <CodeSample>[];
     if (Model.instance.samples != null) {
-      if (Model.instance.workingSample == null) {
+      if (Model.instance.currentSample == null) {
         samples = Model.instance.samples!;
       } else {
-        samples = <CodeSample>[Model.instance.workingSample!];
+        samples = <CodeSample>[Model.instance.currentSample!];
       }
       int index = 0;
       panels = samples.map<ExpansionPanel>(
@@ -201,6 +215,14 @@ class _SamplerState extends State<Sampler> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
+      floatingActionButton: Model.instance.workingFile != null ? FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () {
+          Navigator.of(context).pushNamed(_kNewSampleSelectView).then((Object? result) {
+            Model.instance.currentSample = null;
+          });
+        },
+      ) : null,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:io' show exit;
+import 'package:file/file.dart';
 import 'package:file/local.dart';
 import 'package:args/args.dart';
 import 'package:snippets/snippets.dart';
@@ -24,7 +25,9 @@ void main(List<String> argList) {
   }
 
   final SnippetDartdocParser snippetParser = SnippetDartdocParser();
-  final List<CodeSample> samples = snippetParser.parse(filesystem.file(args['file']! as String));
+
+  final File file = filesystem.file(args['file']! as String);
+  final List<CodeSample> samples = snippetParser.parseWithAssumptions(getFileElements(file), file).toList();
 
   final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {

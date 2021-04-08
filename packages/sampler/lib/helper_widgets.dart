@@ -186,6 +186,7 @@ class AutocompleteField extends StatelessWidget {
     required this.focusNode,
     required this.textEditingController,
     required this.onFieldSubmitted,
+    this.hintText = '',
     this.trailing,
   }) : super(key: key);
 
@@ -197,6 +198,8 @@ class AutocompleteField extends StatelessWidget {
 
   final Widget? trailing;
 
+  final String hintText;
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -205,6 +208,9 @@ class AutocompleteField extends StatelessWidget {
           child: TextFormField(
             controller: textEditingController,
             focusNode: focusNode,
+            decoration: InputDecoration(
+              hintText: hintText,
+            ),
             onFieldSubmitted: (String value) {
               onFieldSubmitted();
             },

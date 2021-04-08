@@ -39,8 +39,11 @@ class FlutterProject {
 
   Future<Map<String, int>> _findReplacementRangeAndIndents() async {
     final File frameworkFile = sample.start.file!;
-    final List<List<SourceLine>> frameworkComments =
-        getFileComments(frameworkFile).where((List<SourceLine> lines) {
+
+    final Iterable<SourceElement> frameworkFileElements = getFileElements(frameworkFile);
+    final List<List<SourceLine>> frameworkComments = frameworkFileElements
+        .map<List<SourceLine>>((SourceElement element) => element.comment)
+        .where((List<SourceLine> lines) {
       return lines.first.element == sample.element;
     }).toList();
     if (frameworkComments.length != 1) {

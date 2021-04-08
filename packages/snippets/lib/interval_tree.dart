@@ -8,13 +8,21 @@ import 'package:quiver/core.dart';
 import 'package:quiver/collection.dart';
 
 @immutable
-class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
-  Interval(this._start, this._end);
+class Interval<T extends Comparable<T>, U extends Object> extends Comparable<Interval<T, U>> {
+  Interval(this._start, this._end, [this._payload]);
 
   /// Creates a copy of the [other] interval.
-  Interval.copy(Interval<T> other)
+  Interval.copy(Interval<T, U> other)
       : _start = other._start,
-        _end = other._end;
+        _end = other._end,
+        _payload = other._payload;
+
+  U? mergePayload(Interval<T, U> other) {
+    return _payload;
+  }
+
+  U? get payload => _payload;
+  final U? _payload;
 
   /// Returns the start point of this interval.
   T get start => _start;
@@ -23,12 +31,12 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   T get end => _end;
 
   /// Returns `true` if this interval contains the [other] interval.
-  bool contains(Interval<T> other) {
+  bool contains(Interval<T, U> other) {
     return other.start.compareTo(start) >= 0 && other.end.compareTo(end) <= 0;
   }
 
   /// Returns `true` if this interval intersects with the [other] interval.
-  bool intersects(Interval<T> other) {
+  bool intersects(Interval<T, U> other) {
     return other.start.compareTo(end) <= 0 && other.end.compareTo(start) >= 0;
   }
 
@@ -50,8 +58,8 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   ///     final b = Interval(3, 5);
   ///     print(b.union(a)); // [0, 5]
   ///
-  Interval<T> union(Interval<T> other) =>
-      Interval<T>(_min(start, other.start), _max(end, other.end));
+  Interval<T, U> union(Interval<T, U> other) =>
+      Interval<T, U>(_min(start, other.start), _max(end, other.end), mergePayload(other));
 
   /// Returns the intersection between this interval and the [other] interval,
   /// or `null` if the intervals do not intersect.
@@ -71,11 +79,11 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   ///     final b = Interval(3, 5);
   ///     print(b.intersection(a)); // null
   ///
-  Interval<T>? intersection(Interval<T> other) {
+  Interval<T, U>? intersection(Interval<T, U> other) {
     if (!intersects(other)) {
       return null;
     }
-    return Interval<T>(_max(start, other.start), _min(end, other.end));
+    return Interval<T, U>(_max(start, other.start), _min(end, other.end), mergePayload(other));
   }
 
   /// Returns the difference between this interval and the [other] interval,
@@ -100,21 +108,24 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   ///     print(a.difference(b)); // [[1, 2], [4, 5]]
   ///     print(b.difference(a)); // null
   ///
-  Iterable<Interval<T>>? difference(Interval<T> other) {
+  Iterable<Interval<T, U>>? difference(Interval<T, U> other) {
     if (other.contains(this)) {
       return null;
     }
     if (!other.intersects(this)) {
-      return <Interval<T>>[this];
+      return <Interval<T, U>>[this];
     }
 
     if (start.compareTo(other.start) < 0 && end.compareTo(other.end) <= 0) {
-      return <Interval<T>>[Interval<T>(start, other.start)];
+      return <Interval<T, U>>[Interval<T, U>(start, other.start, mergePayload(other))];
     }
     if (start.compareTo(other.start) >= 0 && end.compareTo(other.end) > 0) {
-      return <Interval<T>>[Interval<T>(other.end, end)];
+      return <Interval<T, U>>[Interval<T, U>(other.end, end, mergePayload(other))];
     }
-    return <Interval<T>>[Interval<T>(start, other.start), Interval<T>(other.end, end)];
+    return <Interval<T, U>>[
+      Interval<T, U>(start, other.start, mergePayload(other)),
+      Interval<T, U>(other.end, end, mergePayload(other)),
+    ];
   }
 
   /// Compares this interval to the [other] interval.
@@ -129,31 +140,31 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   ///   interval,
   /// - zero if this interval is _equal to_ the [other] interval.
   @override
-  int compareTo(Interval<T> other) {
+  int compareTo(Interval<T, U> other) {
     return start == other.start ? _cmp(end, other.end) : _cmp(start, other.start);
   }
 
   /// Returns `true` if this interval start or ends before the [other] interval.
   ///
   /// See [compareTo] for detailed interval comparison rules.
-  bool operator <(Interval<T> other) => compareTo(other) < 0;
+  bool operator <(Interval<T, U> other) => compareTo(other) < 0;
 
   /// Returns `true` if this interval starts or ends before or same as the
   /// [other] interval.
   ///
   /// See [compareTo] for detailed interval comparison rules.
-  bool operator <=(Interval<T> other) => compareTo(other) <= 0;
+  bool operator <=(Interval<T, U> other) => compareTo(other) <= 0;
 
   /// Returns `true` if this interval starts or ends after the [other] interval.
   ///
   /// See [compareTo] for detailed interval comparison rules.
-  bool operator >(Interval<T> other) => compareTo(other) > 0;
+  bool operator >(Interval<T, U> other) => compareTo(other) > 0;
 
   /// Returns `true` if this interval starts or ends after or same as the
   /// [other] interval.
   ///
   /// See [compareTo] for detailed interval comparison rules.
-  bool operator >=(Interval<T> other) => compareTo(other) >= 0;
+  bool operator >=(Interval<T, U> other) => compareTo(other) >= 0;
 
   /// Returns `true` if this interval starts and ends same as the [other]
   /// interval.
@@ -161,7 +172,7 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
   /// See [compareTo] for detailed interval comparison rules.
   @override
   bool operator ==(Object other) {
-    return other is Interval<T> && start == other.start && end == other.end;
+    return other is Interval<T, U> && start == other.start && end == other.end;
   }
 
   /// Returns the hash code for this interval.
@@ -234,35 +245,35 @@ class Interval<T extends Comparable<T>> extends Comparable<Interval<T>> {
 ///
 ///     final interval = ivt.Interval(1, 2);
 ///
-class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
+class IntervalTree<T extends Comparable<T>, U extends Object> with IterableMixin<Interval<T, U>> {
   /// Creates a tree, optionally with an [interval].
-  IntervalTree([Interval<T>? interval]) {
+  IntervalTree([Interval<T, U>? interval]) {
     if (interval != null) {
       add(interval);
     }
   }
 
   /// Creates a tree from given iterable of [intervals].
-  factory IntervalTree.from(Iterable<Interval<T>> intervals) {
-    final IntervalTree<T> tree = IntervalTree<T>();
+  factory IntervalTree.from(Iterable<Interval<T, U>> intervals) {
+    final IntervalTree<T, U> tree = IntervalTree<T, U>();
     intervals.forEach(tree.add);
     return tree;
   }
 
   /// Creates a tree from [intervals].
-  factory IntervalTree.of(Iterable<Interval<T>> intervals) => IntervalTree<T>()..addAll(intervals);
+  factory IntervalTree.of(Iterable<Interval<T, U>> intervals) => IntervalTree<T, U>()..addAll(intervals);
 
   /// Adds an [interval] into this tree.
   void add(dynamic interval) {
-    Interval<T> iv = _asInterval(interval);
+    Interval<T, U> iv = _asInterval(interval);
     if (iv == null) {
       return;
     }
 
     bool joined = false;
-    BidirectionalIterator<Interval<T>> it = _tree.fromIterator(iv);
+    BidirectionalIterator<Interval<T, U>> it = _tree.fromIterator(iv);
     while (it.movePrevious()) {
-      final Interval<T>? union = _tryJoin(it.current, iv);
+      final Interval<T, U>? union = _tryJoin(it.current, iv);
       if (union == null) {
         break;
       }
@@ -272,7 +283,7 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
 
     it = _tree.fromIterator(iv, inclusive: false);
     while (it.moveNext()) {
-      final Interval<T>? union = _tryJoin(it.current, iv);
+      final Interval<T, U>? union = _tryJoin(it.current, iv);
       if (union == null) {
         break;
       }
@@ -286,7 +297,7 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
   }
 
   /// Adds all [intervals] into this tree.
-  void addAll(Iterable<Interval<T>> intervals) {
+  void addAll(Iterable<Interval<T, U>> intervals) {
     if (intervals == null) {
       return;
     }
@@ -295,14 +306,14 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
 
   /// Removes an [interval] from this tree.
   void remove(dynamic interval) {
-    final Interval<T> iv = _asInterval(interval);
+    final Interval<T, U> iv = _asInterval(interval);
     if (iv == null) {
       return;
     }
 
-    BidirectionalIterator<Interval<T>> it = _tree.fromIterator(iv);
+    BidirectionalIterator<Interval<T, U>> it = _tree.fromIterator(iv);
     while (it.movePrevious()) {
-      final Interval<T> current = it.current;
+      final Interval<T, U> current = it.current;
       if (!_trySplit(it.current, iv)) {
         break;
       }
@@ -311,7 +322,7 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
 
     it = _tree.fromIterator(iv, inclusive: false);
     while (it.moveNext()) {
-      final Interval<T> current = it.current;
+      final Interval<T, U> current = it.current;
       if (!_trySplit(it.current, iv)) {
         break;
       }
@@ -320,7 +331,7 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
   }
 
   /// Removes all [intervals] from this tree.
-  void removeAll(Iterable<Interval<T>> intervals) {
+  void removeAll(Iterable<Interval<T, U>> intervals) {
     if (intervals == null) {
       return;
     }
@@ -333,19 +344,19 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
   }
 
   // Returns the union of this tree and the [other] tree.
-  IntervalTree<T> union(IntervalTree<T> other) => IntervalTree<T>.of(this)..addAll(other);
+  IntervalTree<T, U> union(IntervalTree<T, U> other) => IntervalTree<T, U>.of(this)..addAll(other);
 
   // Returns the difference between this tree and the [other] tree.
-  IntervalTree<T> difference(IntervalTree<T> other) => IntervalTree<T>.of(this)..removeAll(other);
+  IntervalTree<T, U> difference(IntervalTree<T, U> other) => IntervalTree<T, U>.of(this)..removeAll(other);
 
   // Returns the intersection of this tree and the [other] tree.
-  IntervalTree<T> intersection(IntervalTree<T> other) {
-    final IntervalTree<T> result = IntervalTree<T>();
+  IntervalTree<T, U> intersection(IntervalTree<T, U> other) {
+    final IntervalTree<T, U> result = IntervalTree<T, U>();
     if (isEmpty || other.isEmpty) {
       return result;
     }
-    for (final Interval<T> iv in other) {
-      BidirectionalIterator<Interval<T>> it = _tree.fromIterator(iv);
+    for (final Interval<T, U> iv in other) {
+      BidirectionalIterator<Interval<T, U>> it = _tree.fromIterator(iv);
       while (it.movePrevious() && iv.intersects(it.current)) {
         result.add(iv.intersection(it.current));
       }
@@ -359,12 +370,12 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
 
   @override
   bool contains(dynamic element) {
-    final Interval<T> iv = _asInterval(element);
+    final Interval<T, U> iv = _asInterval(element);
     if (iv == null) {
       return false;
     }
 
-    BidirectionalIterator<Interval<T>> it = _tree.fromIterator(iv);
+    BidirectionalIterator<Interval<T, U>> it = _tree.fromIterator(iv);
     while (it.movePrevious() && iv.intersects(it.current)) {
       if (it.current.contains(iv)) {
         return true;
@@ -393,35 +404,35 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
 
   /// Returns the first interval in tree, or `null` if this tree is empty.
   @override
-  Interval<T> get first => _tree.first;
+  Interval<T, U> get first => _tree.first;
 
   /// Returns the first interval in tree, or `null` if this tree is empty.
   @override
-  Interval<T> get last => _tree.last;
+  Interval<T, U> get last => _tree.last;
 
   /// Checks that this tree has only one interval, and returns that interval.
   @override
-  Interval<T> get single => _tree.single;
+  Interval<T, U> get single => _tree.single;
 
   /// Returns a bidirectional iterator that allows iterating the intervals.
   @override
-  BidirectionalIterator<Interval<T>> get iterator => _tree.iterator;
+  BidirectionalIterator<Interval<T, U>> get iterator => _tree.iterator;
 
   /// Returns a string representation of the tree.
   @override
   String toString() => 'IntervalTree' + super.toString();
 
-  Interval<T> _asInterval(dynamic interval) {
+  Interval<T, U> _asInterval(dynamic interval) {
     if (interval is Iterable<T>) {
       if (interval.length != 2 || interval.first is Iterable) {
         throw ArgumentError('$interval is not an interval');
       }
-      return Interval<T>(interval.first, interval.last);
+      return Interval<T, U>(interval.first, interval.last);
     }
-    return interval as Interval<T>;
+    return interval as Interval<T, U>;
   }
 
-  Interval<T>? _tryJoin(Interval<T> a, Interval<T> b) {
+  Interval<T, U>? _tryJoin(Interval<T, U> a, Interval<T, U> b) {
     if (a == null || b == null) {
       return null;
     }
@@ -431,14 +442,14 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
     if (!a.intersects(b)) {
       return null;
     }
-    final Interval<T> union = a.union(b);
+    final Interval<T, U> union = a.union(b);
     _tree.remove(a);
     _tree.remove(b);
     _tree.add(union);
     return union;
   }
 
-  bool _trySplit(Interval<T> a, Interval<T> b) {
+  bool _trySplit(Interval<T, U> a, Interval<T, U> b) {
     if (a == null || b == null) {
       return false;
     }
@@ -446,9 +457,9 @@ class IntervalTree<T extends Comparable<T>> with IterableMixin<Interval<T>> {
       return false;
     }
     _tree.remove(a);
-    _tree.addAll(<Interval<T>>[...?a.difference(b)]);
+    _tree.addAll(<Interval<T, U>>[...?a.difference(b)]);
     return true;
   }
 
-  final AvlTreeSet<Interval<T>> _tree = AvlTreeSet<Interval<T>>(comparator: Comparable.compare);
+  final AvlTreeSet<Interval<T, U>> _tree = AvlTreeSet<Interval<T, U>>(comparator: Comparable.compare);
 }

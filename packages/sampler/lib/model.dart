@@ -87,9 +87,9 @@ class Model extends ChangeNotifier {
     if (_workingFile == null) {
       return;
     }
-    _samples = _dartdocParser.parse(
-        filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path)),
-        silent: true);
+    final File file = filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path));
+    _elements = getFileElements(file);
+    _samples = _dartdocParser.parseWithAssumptions(_elements!, file, silent: true).toList();
     for (final CodeSample sample in samples!) {
       _snippetGenerator.generateCode(sample, addSectionMarkers: true, includeAssumptions: true);
     }
@@ -99,16 +99,33 @@ class Model extends ChangeNotifier {
 
   CodeSample? _workingSample;
 
-  CodeSample? get workingSample => _workingSample;
+  CodeSample? get currentSample => _workingSample;
 
-  set workingSample(CodeSample? workingSample) {
-    _workingSample = workingSample;
-    notifyListeners();
+  set currentSample(CodeSample? value) {
+    if (value != _workingSample) {
+      _workingSample = value;
+      notifyListeners();
+    }
+  }
+
+  SourceElement? _workingElement;
+
+  SourceElement? get currentElement => _workingElement;
+
+  set currentElement(SourceElement? value) {
+    if (value != _workingElement) {
+      _workingElement = value;
+      notifyListeners();
+    }
   }
 
   List<CodeSample>? _samples;
 
   List<CodeSample>? get samples => _samples;
+
+  Iterable<SourceElement>? _elements;
+
+  Iterable<SourceElement>? get elements => _elements;
 
   Directory flutterRoot;
   Directory get flutterPackageRoot =>

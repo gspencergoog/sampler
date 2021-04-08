@@ -34,7 +34,7 @@ class _DetailViewState extends State<DetailView> {
       if (project == null) {
         final Directory outputLocation =
             Model.instance.filesystem.systemTempDirectory.createTempSync('flutter_sample.');
-        project = FlutterProject(Model.instance.workingSample!,
+        project = FlutterProject(Model.instance.currentSample!,
             location: outputLocation, flutterRoot: Model.instance.flutterRoot);
       }
       compute(_doExport, project!).whenComplete(() {
@@ -71,16 +71,17 @@ class _DetailViewState extends State<DetailView> {
 
   @override
   Widget build(BuildContext context) {
-    if (Model.instance.workingSample == null) {
+    if (Model.instance.currentSample == null) {
       return const Scaffold(body: Center(child: Text('Working sample not set.')));
     }
-    final CodeSample sample = Model.instance.workingSample!;
+    final CodeSample sample = Model.instance.currentSample!;
     final String filename = sample.start.file != null
         ? path.relative(sample.start.file!.path, from: Model.instance.flutterPackageRoot.path)
         : '<generated>';
     return Scaffold(
       appBar: AppBar(
         title: Text('${sample.element} - $filename:${sample.start.line}'),
+        actions: const <Widget>[],
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),

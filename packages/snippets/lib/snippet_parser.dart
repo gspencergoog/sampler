@@ -33,12 +33,13 @@ class SnippetDartdocParser {
 
   /// Extracts the samples from the Dart files in [files], writes them
   /// to disk, and adds them to the appropriate [sectionMap] or [sampleMap].
-  List<CodeSample> parse(
-    File file, {
+  Iterable<CodeSample> parseWithAssumptions(
+    Iterable<SourceElement> elements,
+    File assumptionsFile, {
     bool silent = true,
   }) {
-    final List<CodeSample> samples = parseFromComments(getFileComments(file), silent: silent);
-    final List<SourceLine> assumptions = parseAssumptions(file);
+    final Iterable<CodeSample> samples = parseFromComments(getComments(elements), silent: silent);
+    final List<SourceLine> assumptions = parseAssumptions(assumptionsFile);
     for (final CodeSample sample in samples) {
       if (sample is SnippetSample) {
         sample.assumptions = assumptions;
@@ -46,7 +47,7 @@ class SnippetDartdocParser {
       sample.metadata.addAll(<String, Object?>{
         'id': sample.id,
         'element': sample.element,
-        'sourcePath': file.path,
+        'sourcePath': assumptionsFile.path,
         'sourceLine': sample.start.line,
       });
     }
@@ -134,7 +135,7 @@ class SnippetDartdocParser {
   }
 
   List<CodeSample> parseFromComments(
-    List<List<SourceLine>> comments, {
+    Iterable<List<SourceLine>> comments, {
     bool silent = false,
   }) {
     int dartpadCount = 0;
