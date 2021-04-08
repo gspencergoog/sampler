@@ -32,9 +32,11 @@ class _NewSampleSelectState extends State<NewSampleSelect> {
           Text('${element.elementName} at line ${element.startLine} (${element.typeAsString})'),
           trailing: TextButton(
             child: const Text('ADD SAMPLE'),
-            onPressed: () {
+            onPressed: () async {
               Model.instance.currentElement = element;
-              Navigator.of(context).pushNamed(kNewSampleView).then((Object? result) {
+              await Model.instance.insertNewSample();
+              Navigator.of(context).pushNamed(kDetailView).then((Object? result) {
+                // Clear the current element when returning from the detail view.
                 Model.instance.currentElement = null;
               });
             },

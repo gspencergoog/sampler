@@ -59,7 +59,6 @@ class MainApp extends StatelessWidget {
       routes: <String, WidgetBuilder>{
         kDetailView: (BuildContext context) => const DetailView(),
         kNewSampleSelectView: (BuildContext context) => const NewSampleSelect(title: 'Add a Sample'),
-        kNewSampleView: (BuildContext context) => const DetailView(insertNewSample: true),
       },
       home: const Sampler(title: _title),
     );

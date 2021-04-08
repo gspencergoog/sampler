@@ -15,8 +15,7 @@ import 'data_types.dart';
 import 'interval_tree.dart';
 
 class _LineNumberInterval extends Interval<num, int> {
-  _LineNumberInterval(int start, int end, int line)
-      : super(start, end, line);
+  _LineNumberInterval(int start, int end, int line) : super(start, end, line);
 
   @override
   int? mergePayload(Interval<num, int> other) {
@@ -29,7 +28,9 @@ Iterable<List<SourceLine>> getFileComments(File file) {
 }
 
 Iterable<List<SourceLine>> getComments(Iterable<SourceElement> elements) {
-  return elements.where((SourceElement element) => element.comment.isNotEmpty).map<List<SourceLine>>((SourceElement element) => element.comment);
+  return elements
+      .where((SourceElement element) => element.comment.isNotEmpty)
+      .map<List<SourceLine>>((SourceElement element) => element.comment);
 }
 
 Iterable<SourceElement> getFileCommentElements(File file) {
@@ -52,6 +53,22 @@ Iterable<SourceElement> getCommentElements(Iterable<SourceElement> elements) {
 //   }
 //   return result.single;
 // }
+
+// Reads the file content from the string, to avoid having to read it twice if
+// the caller already has the content in memory.
+Iterable<SourceElement> getElementsFromString(String content, File file) {
+  final ParseStringResult parseResult = parseString(
+      featureSet: FeatureSet.fromEnableFlags2(
+        // TODO(gspencergoog): Get the version string from the flutter --version
+        sdkLanguageVersion: Version(2, 12, 1),
+        flags: <String>[],
+      ),
+      content: content);
+  final _CommentVisitor<CompilationUnit> visitor = _CommentVisitor<CompilationUnit>(file);
+  visitor.visitCompilationUnit(parseResult.unit);
+  visitor.assignLineNumbers();
+  return visitor.elements;
+}
 
 Iterable<SourceElement> getFileElements(File file) {
   final ParseStringResult parseResult = parseFile(
@@ -166,8 +183,16 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
       if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
         comment = _processComment(declaration.name.name, node.documentationComment!);
       }
-      elements.add(SourceElement(SourceElementType.topLevelVariableType, declaration.name.name, node.beginToken.charOffset,
-          className: enclosingClass, comment: comment));
+      elements.add(
+        SourceElement(
+          SourceElementType.topLevelVariableType,
+          declaration.name.name,
+          node.beginToken.charOffset,
+          file: file,
+          className: enclosingClass,
+          comment: comment,
+        ),
+      );
     }
     return super.visitTopLevelVariableDeclaration(node);
   }
@@ -179,7 +204,15 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
       if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
         comment = _processComment(node.name.name, node.documentationComment!);
       }
-      elements.add(SourceElement(SourceElementType.typedefType, node.name.name, node.beginToken.charOffset, comment: comment));
+      elements.add(
+        SourceElement(
+          SourceElementType.typedefType,
+          node.name.name,
+          node.beginToken.charOffset,
+          file: file,
+          comment: comment,
+        ),
+      );
     }
     return super.visitGenericTypeAlias(node);
   }
@@ -193,10 +226,19 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
       List<SourceLine> comment = <SourceLine>[];
       if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
         assert(enclosingClass.isNotEmpty);
-        comment = _processComment('$enclosingClass.${declaration.name.name}', node.documentationComment!);
+        comment =
+            _processComment('$enclosingClass.${declaration.name.name}', node.documentationComment!);
       }
-      elements.add(SourceElement(SourceElementType.fieldType, declaration.name.name, node.beginToken.charOffset,
-          className: enclosingClass, comment: comment));
+      elements.add(
+        SourceElement(
+          SourceElementType.fieldType,
+          declaration.name.name,
+          node.beginToken.charOffset,
+          file: file,
+          className: enclosingClass,
+          comment: comment,
+        ),
+      );
       return super.visitFieldDeclaration(node);
     }
   }
@@ -210,8 +252,16 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
             '${enclosingClass.isNotEmpty ? '$enclosingClass.' : ''}${node.name!.name}';
         comment = _processComment(element, node.documentationComment!);
       }
-      elements.add(SourceElement(SourceElementType.constructorType, node.name!.name, node.beginToken.charOffset,
-          className: enclosingClass, comment: comment));
+      elements.add(
+        SourceElement(
+          SourceElementType.constructorType,
+          node.name!.name,
+          node.beginToken.charOffset,
+          file: file,
+          className: enclosingClass,
+          comment: comment,
+        ),
+      );
     }
     return super.visitConstructorDeclaration(node);
   }
@@ -225,9 +275,15 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
           comment = _processComment(node.name.name, node.documentationComment!);
         }
-        elements.add(SourceElement(
-            SourceElementType.functionType, node.name.name, node.beginToken.charOffset,
-            comment: comment));
+        elements.add(
+          SourceElement(
+            SourceElementType.functionType,
+            node.name.name,
+            node.beginToken.charOffset,
+            file: file,
+            comment: comment,
+          ),
+        );
       }
     }
     return super.visitFunctionDeclaration(node);
@@ -241,8 +297,16 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
         assert(enclosingClass.isNotEmpty);
         comment = _processComment('$enclosingClass.${node.name.name}', node.documentationComment!);
       }
-      elements.add(SourceElement(SourceElementType.methodType, node.name.name, node.beginToken.charOffset,
-          className: enclosingClass, comment: comment));
+      elements.add(
+        SourceElement(
+          SourceElementType.methodType,
+          node.name.name,
+          node.beginToken.charOffset,
+          file: file,
+          className: enclosingClass,
+          comment: comment,
+        ),
+      );
     }
     return super.visitMethodDeclaration(node);
   }
@@ -256,7 +320,15 @@ class _CommentVisitor<T> extends RecursiveAstVisitor<T> {
       if (node.documentationComment != null && node.documentationComment!.tokens.isNotEmpty) {
         comment = _processComment(node.name.name, node.documentationComment!);
       }
-      elements.add(SourceElement(SourceElementType.classType, node.name.name, node.beginToken.charOffset, comment: comment));
+      elements.add(
+        SourceElement(
+          SourceElementType.classType,
+          node.name.name,
+          node.beginToken.charOffset,
+          file: file,
+          comment: comment,
+        ),
+      );
     }
     final T? result = super.visitClassDeclaration(node);
     enclosingClass = '';

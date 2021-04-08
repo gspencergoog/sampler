@@ -16,8 +16,8 @@ import 'data_types.dart';
 import 'snippet_parser.dart';
 import 'util.dart';
 
-class FlutterProject {
-  const FlutterProject(
+class FlutterSampleEditor {
+  const FlutterSampleEditor(
     this.element,
     this.sample, {
     required this.location,
@@ -43,18 +43,18 @@ class FlutterProject {
     final File frameworkFile = sample.start.file!;
 
     final Iterable<SourceElement> frameworkFileElements = getFileElements(frameworkFile);
-    final Iterable<SourceElement> frameworkComments = frameworkFileElements
-        .where((SourceElement element) {
+    final Iterable<SourceElement> frameworkComments =
+        frameworkFileElements.where((SourceElement element) {
       return element.elementName == this.element.elementName;
     });
     if (frameworkComments.length != 1) {
-      throw SnippetException('Unable to find original comment block for sample ${sample.id} in element ${element.elementName}');
+      throw SnippetException(
+          'Unable to find original comment block for sample ${sample.id} in element ${element.elementName}');
     }
     final SnippetDartdocParser parser = SnippetDartdocParser();
     final SourceElement foundElement = frameworkComments.single;
     parser.parseComment(foundElement);
-    final List<CodeSample> foundBlocks =
-        foundElement.samples.where((CodeSample foundSample) {
+    final List<CodeSample> foundBlocks = foundElement.samples.where((CodeSample foundSample) {
       return foundSample.id == sample.id;
     }).toList();
     if (foundBlocks.length != 1) {

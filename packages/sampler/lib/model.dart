@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
 import 'package:file/file.dart';
 import 'package:file/local.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:snippets/snippets.dart';
+import 'package:crypto/crypto.dart';
+import 'package:watcher/watcher.dart';
 
 class Model extends ChangeNotifier {
   Model({
@@ -61,17 +64,90 @@ class Model extends ChangeNotifier {
   }
 
   File? _workingFile;
+  bool suspendReloads = false;
+  FileWatcher? _workingFileWatcher;
+  String? _workingFileContents;
+  String? _workingFileDigest;
 
-  File? get workingFile => _workingFile;
+  File? get workingFile {
+    return _workingFile == null
+        ? null
+        : filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path));
+  }
+
+  String? get workingFileContents => _workingFileContents;
 
   void clearWorkingFile() {
     if (_workingFile == null) {
       return;
     }
     _workingFile = null;
+    _workingFileWatcher = null;
+    _workingFileContents = null;
+    _workingFileDigest = null;
     _currentSample = null;
     _currentElement = null;
     notifyListeners();
+  }
+
+  String _computeDigest(String contents) {
+    return md5.convert(utf8.encode(contents)).toString();
+  }
+
+  // Re-parses the working file, and attempts to set the current sample and
+  // element to the updated sample and element, if they exist.
+  Future<void> reloadWorkingFile({bool notify = true}) async {
+    if (_workingFile == null) {
+      assert(_workingFileWatcher == null);
+      // No working file, nothing to reload.
+      return;
+    }
+    // Only actually reload if the contents have actually changed.
+    final String contents = await workingFile!.readAsString();
+    if (_workingFileDigest != null && _computeDigest(contents) == _workingFileDigest!) {
+      return;
+    }
+    await _loadWorkingFile(contents: contents);
+    if (_currentElement != null && _elements != null) {
+      // Try to find the old element.
+      _currentElement = _elements!
+          .where((SourceElement element) => element.elementName == _currentElement!.elementName)
+          .single;
+    } else {
+      _currentElement = null;
+      _currentSample = null;
+    }
+    if (_currentElement != null && _currentSample != null) {
+      _currentSample = _currentElement!.samples
+          .where((CodeSample sample) => sample.id == _currentSample!.id)
+          .single;
+    } else {
+      _currentSample = null;
+    }
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadWorkingFile({String? contents}) async {
+    if (_workingFile == null) {
+      return;
+    }
+    _workingFileContents = contents ?? await workingFile!.readAsString();
+    _workingFileDigest = _computeDigest(_workingFileContents!);
+    _workingFileWatcher = FileWatcher(workingFile!.path);
+    _workingFileWatcher!.events.listen((WatchEvent event) {
+      if (!suspendReloads) {
+        reloadWorkingFile();
+      }
+    });
+    _elements = getElementsFromString(_workingFileContents!, workingFile!);
+    _dartdocParser.parseFromComments(_elements!);
+    _dartdocParser.parseAndAddAssumptions(_elements!, workingFile!, silent: true);
+    for (final CodeSample sample in samples) {
+      _snippetGenerator.generateCode(sample, addSectionMarkers: true, includeAssumptions: true);
+    }
+    print('Loaded ${samples.length} samples from ${workingFile!.path}');
   }
 
   Future<void> setWorkingFile(File value) async {
@@ -84,18 +160,80 @@ class Model extends ChangeNotifier {
     _currentSample = null;
     _currentElement = null;
 
-    if (_workingFile == null) {
-      return;
+    await _loadWorkingFile();
+    notifyListeners();
+  }
+
+  Future<void> insertNewSample({Type sampleType = SnippetSample, String? template}) async {
+    assert(_workingFile != null, 'Working file must be set to insert a sample');
+
+    // If reloading the file invalidates the current element (because it
+    // disappeared), then throw.
+    if (_currentElement == null) {
+      notifyListeners();
+      throw SnippetException(
+          'Selected symbol no longer present in file ${workingFile ?? '<none>'}');
     }
- 
-    final File file = filesystem.file(path.join(flutterPackageRoot.absolute.path, _workingFile!.path));
-    _elements = getFileElements(file);
-    _dartdocParser.parseFromComments(_elements!);
-    _dartdocParser.parseAndAddAssumptions(_elements!, file, silent: true);
-    for (final CodeSample sample in samples) {
-      _snippetGenerator.generateCode(sample, addSectionMarkers: true, includeAssumptions: true);
+
+    // Find the insertion line automatically. It is either at the end of
+    // the comment block, or just before the line that has "See also:" on it, if
+    // one exists.
+    int? insertAfterLine;
+    bool foundSeeAlso = false;
+    for (final SourceLine line in _currentElement!.comment) {
+      if (line.text.contains('See also:')) {
+        insertAfterLine = line.line - 1;
+        foundSeeAlso = true;
+      }
     }
-    print('Loaded ${samples.length} samples from ${_workingFile!.path}');
+    insertAfterLine ??= _currentElement!.comment.last.line;
+
+    late List<String> insertedTags;
+    final List<String> body = <String>[
+      if (!foundSeeAlso) '///',
+      '/// Insert code sample for ${_currentElement!.elementName} here.',
+      '///',
+      '/// ```dart',
+      '/// // Code goes here.',
+      '/// ```',
+      '/// {@end-tool}',
+      if (foundSeeAlso) '///',
+    ];
+
+    switch (sampleType) {
+      case SnippetSample:
+        insertedTags = <String>['///', '/// {@tool snippet}', ...body];
+        break;
+      case ApplicationSample:
+        insertedTags = <String>['///', '/// {@tool sample --template=$template}', ...body];
+        break;
+      case DartpadSample:
+        insertedTags = <String>['///', '/// {@tool dartpad --template=$template}', ...body];
+        break;
+    }
+
+    // Write out the new file, inserting the new tags.
+    final List<String> output = _workingFileContents!.split('\n')
+      ..insertAll(insertAfterLine, insertedTags);
+
+    suspendReloads = true;
+    await workingFile!.writeAsString(output.join('\n'));
+
+    // Now reload to parse the new sample.
+    await reloadWorkingFile(notify: false);
+
+    // If reloading the file invalidates the current element (because it
+    // disappeared), then throw.
+    if (_currentElement == null) {
+      throw SnippetException(
+          'Selected symbol no longer present in file ${workingFile ?? '<none>'}');
+    }
+
+    // Select the newly inserted sample, assuming that in the reload it was
+    // found as the last sample on the current element.
+    _currentSample = _currentElement!.samples.last;
+
+    suspendReloads = false;
     notifyListeners();
   }
 
@@ -122,8 +260,9 @@ class Model extends ChangeNotifier {
   }
 
   Iterable<CodeSample> get samples {
-    return _elements?.expand<CodeSample>((SourceElement element) => element.samples) ?? const <CodeSample>[];
-  } 
+    return _elements?.expand<CodeSample>((SourceElement element) => element.samples) ??
+        const <CodeSample>[];
+  }
 
   Iterable<SourceElement>? _elements;
 

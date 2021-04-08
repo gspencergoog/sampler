@@ -5,7 +5,7 @@
 export 'analysis.dart';
 export 'configuration.dart';
 export 'data_types.dart';
-export 'flutter_project.dart';
+export 'flutter_sample_editor.dart';
 export 'snippet_generator.dart';
 export 'snippet_parser.dart';
 export 'util.dart';

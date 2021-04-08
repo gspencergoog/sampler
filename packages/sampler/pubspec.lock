@@ -79,7 +79,7 @@ packages:
     source: hosted
     version: "3.0.0"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       url: "https://pub.dartlang.org"
@@ -283,7 +283,7 @@ packages:
     source: hosted
     version: "2.1.0"
   watcher:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: watcher
       url: "https://pub.dartlang.org"

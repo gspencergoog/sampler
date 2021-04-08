@@ -290,6 +290,7 @@ class SourceElement {
       SourceElementType type,
       String name,
       int startPos, {
+        required File file,
         String className = '',
         List<SourceLine>? comment,
         int startLine = -1,
@@ -299,6 +300,7 @@ class SourceElement {
       type,
       name,
       startPos,
+      file: file,
       className: className,
       comment: comment ?? <SourceLine>[],
       startLine: startLine,
@@ -310,6 +312,7 @@ class SourceElement {
     this.type,
     this.name,
     this.startPos, {
+    required this.file,
     this.className = '',
     this.comment = const <SourceLine>[],
     this.startLine = -1,
@@ -319,6 +322,7 @@ class SourceElement {
   final SourceElementType type;
   final String name;
   final String className;
+  final File file;
   final int startPos;
   final int startLine;
   final List<SourceLine> comment;
@@ -332,6 +336,7 @@ class SourceElement {
     SourceElementType? type,
     String? name,
     int? startPos,
+    File? file,
     String? className,
     List<SourceLine>? comment,
     int? startLine,
@@ -341,6 +346,7 @@ class SourceElement {
       type ?? this.type,
       name ?? this.name,
       startPos ?? this.startPos,
+      file: file ?? this.file,
       className: className ?? this.className,
       comment: comment ?? this.comment,
       startLine: startLine ?? this.startLine,
