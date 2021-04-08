@@ -38,12 +38,13 @@ class SnippetDartdocParser {
     bool silent = true,
   }) {
     final List<SourceLine> assumptions = parseAssumptions(assumptionsFile);
-    for (final CodeSample sample in elements.expand<CodeSample>((SourceElement element) => element.samples)) {
+    for (final CodeSample sample
+        in elements.expand<CodeSample>((SourceElement element) => element.samples)) {
       if (sample is SnippetSample) {
         sample.assumptions = assumptions;
       }
       sample.metadata.addAll(<String, Object?>{
-        'id': sample.id,
+        'id': '${sample.element}.${sample.index}',
         'element': sample.element,
         'sourcePath': assumptionsFile.path,
         'sourceLine': sample.start.line,
@@ -80,11 +81,12 @@ class SnippetDartdocParser {
       lineNumber++;
     }
     // No need to get assumptions: dartdoc won't give that to us.
-    final SourceElement newElement = SourceElement(SourceElementType.unknownType, element!, -1, file: input, comment: lines);
+    final SourceElement newElement =
+        SourceElement(SourceElementType.unknownType, element!, -1, file: input, comment: lines);
     parseFromComments(<SourceElement>[newElement], silent: silent);
     for (final CodeSample sample in newElement.samples) {
       sample.metadata.addAll(<String, Object?>{
-        'id': sample.id,
+        'id': '${sample.element}.${sample.index}',
         'element': sample.element,
         'sourcePath': sourceFile.path,
         'sourceLine': sample.start.line,

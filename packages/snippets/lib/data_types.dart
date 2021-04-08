@@ -4,7 +4,6 @@
 
 import 'package:file/file.dart';
 import 'package:args/args.dart';
-import 'package:path/path.dart' as path;
 
 /// A class to represent a line of input code.
 class SourceLine {
@@ -79,11 +78,9 @@ abstract class CodeSample {
     required this.index,
     required SourceLine lineProto,
   })  : assert(args.isNotEmpty),
-        _lineProto = lineProto,
-        id = _createNameFromSource(args.first, lineProto.file ?? input.first.file!, index);
+        _lineProto = lineProto;
 
   final List<String> args;
-  final String id;
   final List<SourceLine> input;
   final SourceLine _lineProto;
 
@@ -104,18 +101,6 @@ abstract class CodeSample {
     parser.addOption('template', defaultsTo: '');
     final ArgResults parsedArgs = parser.parse(args);
     return parsedArgs['template']! as String;
-  }
-
-  /// Creates a name for the snippets tool to use for the snippet ID from a
-  /// filename and starting line number.
-  static String _createNameFromSource(String prefix, File file, int index) {
-    final List<String> components = path.split(file.absolute.path);
-    assert(components.contains('lib'));
-    components.removeRange(0, components.lastIndexOf('lib') + 1);
-    String sampleId = components.join('.');
-    sampleId = path.basenameWithoutExtension(sampleId);
-    sampleId = '$prefix.$sampleId.$index';
-    return sampleId;
   }
 
   @override
@@ -287,15 +272,15 @@ class SourceElement {
   // This uses a factory so that the default for the lists can be modifiable
   // lists.
   factory SourceElement(
-      SourceElementType type,
-      String name,
-      int startPos, {
-        required File file,
-        String className = '',
-        List<SourceLine>? comment,
-        int startLine = -1,
-        List<CodeSample>? samples,
-      }) {
+    SourceElementType type,
+    String name,
+    int startPos, {
+    required File file,
+    String className = '',
+    List<SourceLine>? comment,
+    int startLine = -1,
+    List<CodeSample>? samples,
+  }) {
     return SourceElement._(
       type,
       name,

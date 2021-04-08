@@ -25,11 +25,12 @@ const LocalFileSystem filesystem = LocalFileSystem();
 
 String getChannelName() {
   final RegExp gitBranchRegexp = RegExp(r'^## (?<branch>.*)');
-  final ProcessResult gitResult = Process.runSync('git', <String>['status', '-b', '--porcelain']);
+  final ProcessResult gitResult =
+      Process.runSync('git', <String>['status', '-b', '--porcelain']);
   if (gitResult.exitCode != 0)
     throw 'git status exit with non-zero exit code: ${gitResult.exitCode}';
-  final RegExpMatch? gitBranchMatch =
-      gitBranchRegexp.firstMatch((gitResult.stdout as String).trim().split('\n').first);
+  final RegExpMatch? gitBranchMatch = gitBranchRegexp
+      .firstMatch((gitResult.stdout as String).trim().split('\n').first);
   return gitBranchMatch == null
       ? '<unknown>'
       : gitBranchMatch.namedGroup('branch')!.split('...').first;
@@ -51,12 +52,15 @@ void main(List<String> argList) {
     defaultsTo: 'dartpad',
     allowed: sampleTypes,
     allowedHelp: <String, String>{
-      'dartpad': 'Produce a code sample application complete with embedding the sample in an '
-          'application template for using in Dartpad.',
-      'sample': 'Produce a code sample application complete with embedding the sample in an '
-          'application template.',
-      'snippet': 'Produce a nicely formatted piece of sample code. Does not embed the '
-          'sample into an application template.',
+      'dartpad':
+          'Produce a code sample application complete with embedding the sample in an '
+              'application template for using in Dartpad.',
+      'sample':
+          'Produce a code sample application complete with embedding the sample in an '
+              'application template.',
+      'snippet':
+          'Produce a nicely formatted piece of sample code. Does not embed the '
+              'sample into an application template.',
     },
     help: 'The type of snippet to produce.',
   );
@@ -116,7 +120,8 @@ void main(List<String> argList) {
 
   if (args[_kInputOption] == null) {
     stderr.writeln(parser.usage);
-    errorExit('The --$_kInputOption option must be specified, either on the command '
+    errorExit(
+        'The --$_kInputOption option must be specified, either on the command '
         'line, or in the INPUT environment variable.');
   }
 
@@ -130,7 +135,8 @@ void main(List<String> argList) {
     final String templateArg = args[_kTemplateOption] as String;
     if (templateArg == null || templateArg.isEmpty) {
       stderr.writeln(parser.usage);
-      errorExit('The --$_kTemplateOption option must be specified on the command '
+      errorExit(
+          'The --$_kTemplateOption option must be specified on the command '
           'line for application samples.');
     }
     template = templateArg.replaceAll(RegExp(r'.tmpl$'), '');
@@ -143,7 +149,8 @@ void main(List<String> argList) {
   final List<String> id = <String>[];
   File? output;
   if (args[_kOutputOption] != null) {
-    id.add(path.basename(path.basenameWithoutExtension(args[_kOutputOption] as String)));
+    id.add(path.basename(
+        path.basenameWithoutExtension(args[_kOutputOption] as String)));
     output = filesystem.file(path.absolute(args[_kOutputOption] as String));
   } else {
     if (packageName.isNotEmpty && packageName != 'flutter') {
@@ -165,8 +172,9 @@ void main(List<String> argList) {
     }
   }
 
-  final int? sourceLine =
-      environment['SOURCE_LINE'] != null ? int.tryParse(environment['SOURCE_LINE']!) : null;
+  final int? sourceLine = environment['SOURCE_LINE'] != null
+      ? int.tryParse(environment['SOURCE_LINE']!)
+      : null;
   final String sourcePath = environment['SOURCE_PATH'] ?? 'unknown.dart';
   final SnippetDartdocParser sampleParser = SnippetDartdocParser();
   final SourceElement element = sampleParser.parseFromDartdocToolFile(

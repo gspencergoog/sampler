@@ -70,6 +70,21 @@ class SnippetGenerator {
     return templateFile.existsSync() ? templateFile : null;
   }
 
+  /// Returns an iterable over the template files available in the templates
+  /// directory in the configuration.
+  Iterable<File> getAvailableTemplates() sync* {
+    final Directory templatesDir = configuration.templatesDirectory;
+    if (templatesDir == null) {
+      io.stderr.writeln('Unable to find the templates directory.');
+      io.exit(1);
+    }
+    for (final File file in templatesDir.listSync().whereType<File>()) {
+      if (file.basename.endsWith('.tmpl')) {
+        yield file;
+      }
+    }
+  }
+
   /// Interpolates the [injections] into an HTML skeleton file.
   ///
   /// Similar to interpolateTemplate, but we are only looking for `code-`

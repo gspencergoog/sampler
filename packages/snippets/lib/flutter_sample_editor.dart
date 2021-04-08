@@ -11,9 +11,7 @@ import 'package:process/process.dart';
 import 'package:recase/recase.dart';
 import 'package:pub_semver/pub_semver.dart';
 
-import 'analysis.dart';
 import 'data_types.dart';
-import 'snippet_parser.dart';
 import 'util.dart';
 
 class FlutterSampleEditor {
@@ -40,25 +38,11 @@ class FlutterSampleEditor {
   File get mainDart => location.childDirectory('lib').childFile('main.dart');
 
   Future<Map<String, int>> _findReplacementRangeAndIndents() async {
-    final File frameworkFile = sample.start.file!;
-
-    final Iterable<SourceElement> frameworkFileElements = getFileElements(frameworkFile);
-    final Iterable<SourceElement> frameworkComments =
-        frameworkFileElements.where((SourceElement element) {
-      return element.elementName == this.element.elementName;
-    });
-    if (frameworkComments.length != 1) {
-      throw SnippetException(
-          'Unable to find original comment block for sample ${sample.id} in element ${element.elementName}');
-    }
-    final SnippetDartdocParser parser = SnippetDartdocParser();
-    final SourceElement foundElement = frameworkComments.single;
-    parser.parseComment(foundElement);
-    final List<CodeSample> foundBlocks = foundElement.samples.where((CodeSample foundSample) {
-      return foundSample.id == sample.id;
+    final List<CodeSample> foundBlocks = element.samples.where((CodeSample foundSample) {
+      return foundSample.index == sample.index;
     }).toList();
     if (foundBlocks.length != 1) {
-      throw SnippetException('Unable to find original location for sample ${sample.id}');
+      throw SnippetException('Unable to find original location for sample ${sample.index} on ${sample.element}');
     }
     final CodeSample foundBlock = foundBlocks.first;
     int startRange;
@@ -74,7 +58,7 @@ class FlutterSampleEditor {
       startRange = foundBlock.input.first.startChar;
       endRange = foundBlock.input.last.endChar;
       // Back up from the start of range, and find the first newline.
-      final String contents = await frameworkFile.readAsString();
+      final String contents = await element.file.readAsString();
       int cursor = startRange;
       while (cursor >= 0 && contents[cursor] != '\n') {
         cursor--;
@@ -158,14 +142,14 @@ class FlutterSampleEditor {
         }
       } else {
         if (currentSection != null) {
+          if (currentSection == 'description') {
+            // Strip comment markers off of description lines.
+            line = line.replaceFirst(RegExp(r'^\s*///? ?'), '');
+          }
           // Skip empty lines at the beginning of a section.
           final bool isEmpty = line.trim().isEmpty;
           if (sections[currentSection]!.isEmpty && isEmpty) {
             continue;
-          }
-          if (currentSection == 'description') {
-            // Strip comment markers off of description lines.
-            line = line.replaceFirst(RegExp(r'^\s*///? ?'), '');
           }
           sections[currentSection]!.add(line);
           if (!isEmpty) {

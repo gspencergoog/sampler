@@ -118,9 +118,12 @@ class Model extends ChangeNotifier {
       _currentSample = null;
     }
     if (_currentElement != null && _currentSample != null) {
-      _currentSample = _currentElement!.samples
-          .where((CodeSample sample) => sample.id == _currentSample!.id)
-          .single;
+      final Iterable<CodeSample> samples =
+          _currentElement!.samples.where((CodeSample sample) => sample.index == _currentSample!.index);
+      if (samples.length != 1) {
+        throw SnippetException('Unable to find sample ${_currentSample!.index} on ${_currentElement!.elementName} during reload.');
+      }
+      _currentSample = samples.single;
     } else {
       _currentSample = null;
     }
@@ -190,11 +193,15 @@ class Model extends ChangeNotifier {
 
     late List<String> insertedTags;
     final List<String> body = <String>[
-      if (!foundSeeAlso) '///',
-      '/// Insert code sample for ${_currentElement!.elementName} here.',
+      '///',
+      '/// Replace this text with the description for the sample',
+      '/// on "${_currentElement!.elementName}" goes here.',
       '///',
       '/// ```dart',
-      '/// // Code goes here.',
+      '/// Widget build(BuildContext context) {',
+      '///   // Sample code goes here.',
+      '///   return const SizedBox();',
+      '/// }',
       '/// ```',
       '/// {@end-tool}',
       if (foundSeeAlso) '///',
@@ -202,19 +209,33 @@ class Model extends ChangeNotifier {
 
     switch (sampleType) {
       case SnippetSample:
-        insertedTags = <String>['///', '/// {@tool snippet}', ...body];
+        insertedTags = <String>[if (!foundSeeAlso) '///', '/// {@tool snippet}', ...body];
         break;
       case ApplicationSample:
-        insertedTags = <String>['///', '/// {@tool sample --template=$template}', ...body];
+        insertedTags = <String>[
+          if (!foundSeeAlso) '///',
+          '/// {@tool sample --template=$template}',
+          ...body
+        ];
         break;
       case DartpadSample:
-        insertedTags = <String>['///', '/// {@tool dartpad --template=$template}', ...body];
+        insertedTags = <String>[
+          if (!foundSeeAlso) '///',
+          '/// {@tool dartpad --template=$template}',
+          ...body
+        ];
         break;
     }
 
+    // Get the indent needed for the new lines.
+    final List<String> contents = _workingFileContents!.split('\n');
+    final String indent = ' ' * getIndent(contents[insertAfterLine]);
     // Write out the new file, inserting the new tags.
-    final List<String> output = _workingFileContents!.split('\n')
-      ..insertAll(insertAfterLine, insertedTags);
+    final List<String> output = contents
+      ..insertAll(
+        insertAfterLine,
+        insertedTags.map<String>((String line) => '$indent$line'),
+      );
 
     suspendReloads = true;
     await workingFile!.writeAsString(output.join('\n'));
@@ -235,6 +256,12 @@ class Model extends ChangeNotifier {
 
     suspendReloads = false;
     notifyListeners();
+  }
+
+  Iterable<String> getTemplateNames() {
+    return _snippetGenerator
+        .getAvailableTemplates()
+        .map<String>((File file) => file.basename.replaceFirst('.tmpl', ''));
   }
 
   CodeSample? _currentSample;

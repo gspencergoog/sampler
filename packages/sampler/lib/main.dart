@@ -58,7 +58,8 @@ class MainApp extends StatelessWidget {
       ),
       routes: <String, WidgetBuilder>{
         kDetailView: (BuildContext context) => const DetailView(),
-        kNewSampleSelectView: (BuildContext context) => const NewSampleSelect(title: 'Add a Sample'),
+        kNewSampleSelectView: (BuildContext context) =>
+            const NewSampleSelect(title: 'Add a Sample'),
       },
       home: const Sampler(title: _title),
     );
@@ -183,10 +184,11 @@ class _SamplerState extends State<Sampler> {
     final int total = snippets + applications + dartpads;
     final bool allOneKind = total == snippets || total == applications || total == dartpads;
     return <String>[
-      if (!allOneKind) '${Model.instance.samples.length} samples: ',
-      if (snippets > 0) '$snippets snippets',
-      if (applications > 0) '$applications application samples',
-      if (dartpads > 0) '$dartpads dartpad samples'
+      if (!allOneKind)
+        '${Model.instance.samples.length} sample${Model.instance.samples.length != 1 ? 's' : ''} total',
+      if (snippets > 0) '$snippets snippet${snippets != 1 ? 's' : ''}',
+      if (applications > 0) '$applications application sample${applications != 1 ? 's' : ''}',
+      if (dartpads > 0) '$dartpads dartpad sample${dartpads != 1 ? 's' : ''}'
     ].join(', ');
   }
 
@@ -215,14 +217,16 @@ class _SamplerState extends State<Sampler> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      floatingActionButton: Model.instance.workingFile != null ? FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          Navigator.of(context).pushNamed(kNewSampleSelectView).then((Object? result) {
-            Model.instance.currentSample = null;
-          });
-        },
-      ) : null,
+      floatingActionButton: Model.instance.workingFile != null
+          ? FloatingActionButton(
+              child: const Icon(Icons.add),
+              onPressed: () {
+                Navigator.of(context).pushNamed(kNewSampleSelectView).then((Object? result) {
+                  Model.instance.currentSample = null;
+                });
+              },
+            )
+          : null,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),

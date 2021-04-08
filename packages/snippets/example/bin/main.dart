@@ -30,11 +30,12 @@ void main(List<String> argList) {
   final List<SourceElement> elements = getFileElements(file).toList();
   snippetParser.parseFromComments(elements);
   snippetParser.parseAndAddAssumptions(elements, file);
-  final List<CodeSample> samples = elements.expand<CodeSample>((SourceElement element) => element.samples).toList();
+  final List<CodeSample> samples =
+      elements.expand<CodeSample>((SourceElement element) => element.samples).toList();
 
   final SnippetGenerator generator = SnippetGenerator();
   for (final CodeSample sample in samples) {
-    print('${sample.id}: $sample');
+    print('${sample.element}.${sample.index}: $sample');
     print('Generated:\n${generator.generateCode(sample)}');
   }
 

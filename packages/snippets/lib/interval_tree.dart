@@ -261,7 +261,8 @@ class IntervalTree<T extends Comparable<T>, U extends Object> with IterableMixin
   }
 
   /// Creates a tree from [intervals].
-  factory IntervalTree.of(Iterable<Interval<T, U>> intervals) => IntervalTree<T, U>()..addAll(intervals);
+  factory IntervalTree.of(Iterable<Interval<T, U>> intervals) =>
+      IntervalTree<T, U>()..addAll(intervals);
 
   /// Adds an [interval] into this tree.
   void add(dynamic interval) {
@@ -347,7 +348,8 @@ class IntervalTree<T extends Comparable<T>, U extends Object> with IterableMixin
   IntervalTree<T, U> union(IntervalTree<T, U> other) => IntervalTree<T, U>.of(this)..addAll(other);
 
   // Returns the difference between this tree and the [other] tree.
-  IntervalTree<T, U> difference(IntervalTree<T, U> other) => IntervalTree<T, U>.of(this)..removeAll(other);
+  IntervalTree<T, U> difference(IntervalTree<T, U> other) =>
+      IntervalTree<T, U>.of(this)..removeAll(other);
 
   // Returns the intersection of this tree and the [other] tree.
   IntervalTree<T, U> intersection(IntervalTree<T, U> other) {
@@ -461,5 +463,6 @@ class IntervalTree<T extends Comparable<T>, U extends Object> with IterableMixin
     return true;
   }
 
-  final AvlTreeSet<Interval<T, U>> _tree = AvlTreeSet<Interval<T, U>>(comparator: Comparable.compare);
+  final AvlTreeSet<Interval<T, U>> _tree =
+      AvlTreeSet<Interval<T, U>>(comparator: Comparable.compare);
 }

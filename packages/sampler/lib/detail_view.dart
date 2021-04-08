@@ -107,9 +107,7 @@ class _DetailViewState extends State<DetailView> {
                   if (!exporting)
                     TextButton(
                         child: Text(
-                          project == null
-                              ? 'EXTRACT SAMPLE'
-                              : 'RE-EXTRACT SAMPLE',
+                          project == null ? 'EXTRACT SAMPLE' : 'RE-EXTRACT SAMPLE',
                         ),
                         onPressed: _extractSample),
                   if (project != null && !exporting)

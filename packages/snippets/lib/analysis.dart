@@ -41,19 +41,6 @@ Iterable<SourceElement> getCommentElements(Iterable<SourceElement> elements) {
   return elements.where((SourceElement element) => element.comment.isNotEmpty);
 }
 
-// SourceElement? findElementByName(Iterable<SourceElement> elements, String name) {
-//   final Iterable<SourceElement> result = elements.where((SourceElement element) {
-//     if (element.className.isNotEmpty) {
-//       return name == '${element.className}.${element.name}';
-//     }
-//     return name == element.name;
-//   });
-//   if (result.isEmpty) {
-//     return null;
-//   }
-//   return result.single;
-// }
-
 // Reads the file content from the string, to avoid having to read it twice if
 // the caller already has the content in memory.
 Iterable<SourceElement> getElementsFromString(String content, File file) {
