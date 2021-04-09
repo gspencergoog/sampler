@@ -277,7 +277,9 @@ class SnippetGenerator {
       if (!inCodeBlock) {
         description.add(line);
       } else {
-        assert(language != null);
+        if (language == null) {
+          throw SnippetException('Unable to find language for code block at $line', line: line.line, file: line.file?.path);
+        }
         components.last.contents.add(line);
       }
     }

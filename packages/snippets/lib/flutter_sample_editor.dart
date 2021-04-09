@@ -42,7 +42,8 @@ class FlutterSampleEditor {
       return foundSample.index == sample.index;
     }).toList();
     if (foundBlocks.length != 1) {
-      throw SnippetException('Unable to find original location for sample ${sample.index} on ${sample.element}');
+      throw SnippetException(
+          'Unable to find original location for sample ${sample.index} on ${sample.element}');
     }
     final CodeSample foundBlock = foundBlocks.first;
     int startRange;

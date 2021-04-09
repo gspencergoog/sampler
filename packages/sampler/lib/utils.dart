@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
+import 'dart:io' show ProcessResult;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:file/file.dart';
@@ -84,20 +87,34 @@ void openInIde(IdeType type, FileSystemEntity location,
     case 'macos':
       switch (type) {
         case IdeType.idea:
+          final ProcessResult result = processManager.runSync(<String>[
+            'mdfind',
+            'kMDItemCFBundleIdentifier=com.jetbrains.intellij* kind:application',
+          ], stdoutEncoding: utf8);
+          final Iterable<String> candidates = (result.stdout as String).split('\n').where((String candidate) {
+            return !candidate.contains('/Application Support/');
+          });
+          final String appName = candidates.isNotEmpty ? candidates.first : 'IntelliJ IDEA CE';
           processManager.run(<String>[
             'open',
             '-a',
-            'IntelliJ',
+            appName,
             '--args',
             if (startLine != 0) '${location.absolute.path}:$startLine',
             if (startLine == 0) location.absolute.path,
           ], runInShell: true);
           break;
         case IdeType.vscode:
+          final ProcessResult result = processManager.runSync(<String>[
+            'mdfind',
+            'kMDItemCFBundleIdentifier=com.microsoft.VSCode* kind:application',
+          ], stdoutEncoding: utf8);
+          final Iterable<String> candidates = (result.stdout as String).split('\n');
+          final String appName = candidates.isNotEmpty ? candidates.first : 'Visual Studio Code';
           processManager.run(<String>[
             'open',
             '-a',
-            'Visual Studio Code',
+            appName,
             '--args',
             '--goto',
             '${location.absolute.path}:$startLine',
