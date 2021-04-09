@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:file/file.dart';
 import 'package:platform/platform.dart';
 import 'package:process/process.dart';
@@ -122,4 +124,20 @@ void openInIde(IdeType type, FileSystemEntity location,
       }
       break;
   }
+}
+
+TextSpan codeTextSpan(BuildContext context, String text) {
+  return TextSpan(
+    text: text,
+    style: Theme.of(context).textTheme.bodyText1!.copyWith(
+      fontSize: Theme.of(context).textTheme.bodyText1!.fontSize! + 2,
+      color: Colors.indigo,
+      fontFamily: 'Fira Code',
+      fontFamilyFallback: <String>[
+        'Courier New',
+        'Lucidia Console',
+        'mono',
+      ],
+    ),
+  );
 }

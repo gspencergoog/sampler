@@ -4,6 +4,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:sampler/utils.dart';
 import 'package:snippets/snippets.dart';
 
 import 'helper_widgets.dart';
@@ -148,8 +149,16 @@ class _NewSampleSelectState extends State<NewSampleSelect> {
     return ExpansionPanel(
       headerBuilder: (BuildContext context, bool isExpanded) {
         return ListTile(
-          title:
-              Text('${element.elementName} at line ${element.startLine} (${element.typeAsString})'),
+          title: Text.rich(
+            TextSpan(
+              children: <InlineSpan>[
+                TextSpan(text: '${element.typeAsString} '),
+                codeTextSpan(context, element.elementName),
+                TextSpan(text: ' at line ${element.startLine}'),
+              ],
+            ),
+          ),
+          subtitle: Text('has ${element.samples.length} existing ${element.samples.length == 1 ? 'sample' : 'samples'}'),
           trailing: TextButton(
             child: const Text('ADD SAMPLE'),
             onPressed: () async {

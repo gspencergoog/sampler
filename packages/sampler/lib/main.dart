@@ -12,6 +12,7 @@ import 'detail_view.dart';
 import 'helper_widgets.dart';
 import 'model.dart';
 import 'new_sample.dart';
+import 'utils.dart';
 
 const String _kFileOption = 'file';
 const String _kFlutterRootOption = 'flutter-root';
@@ -113,14 +114,23 @@ class _SamplerState extends State<Sampler> {
     return ExpansionPanel(
       headerBuilder: (BuildContext context, bool isExpanded) {
         return ListTile(
-          title: Text(
-              '${sample.start.element}${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line} (${sample.type})'),
+          title: Text.rich(
+            TextSpan(
+              children: <InlineSpan>[
+                TextSpan(text: '${sample.type == 'dartpad' ? 'dartpad sample': sample.type} for '),
+                codeTextSpan(context, sample.start.element!),
+                TextSpan(text: '${sample.index != 0 ? '(${sample.index})' : ''} at line ${sample.start.line}'),
+              ],
+            ),
+          ),
           trailing: TextButton(
             child: const Text('SELECT'),
             onPressed: () {
+              Model.instance.currentElement = Model.instance.getElementForSample(sample);
               Model.instance.currentSample = sample;
               Navigator.of(context).pushNamed(kDetailView).then((Object? result) {
                 Model.instance.currentSample = null;
+                Model.instance.currentElement = null;
               });
             },
           ),
@@ -163,9 +173,9 @@ class _SamplerState extends State<Sampler> {
               icon: const Icon(Icons.highlight_remove),
               onPressed: () {
                 setState(() {
+                  Model.instance.clearWorkingFile();
                   textEditingController.clear();
                   expandedIndex = -1;
-                  Model.instance.clearWorkingFile();
                 });
               })
           : null,
@@ -220,8 +230,12 @@ class _SamplerState extends State<Sampler> {
       floatingActionButton: Model.instance.workingFile != null
           ? FloatingActionButton(
               child: const Icon(Icons.add),
+              tooltip: 'Add a new sample to ${Model.instance.workingFile!.basename}',
               onPressed: () {
+                Model.instance.currentElement = null;
+                Model.instance.currentSample = null;
                 Navigator.of(context).pushNamed(kNewSampleSelectView).then((Object? result) {
+                  Model.instance.currentElement = null;
                   Model.instance.currentSample = null;
                 });
               },

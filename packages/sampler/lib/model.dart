@@ -87,6 +87,7 @@ class Model extends ChangeNotifier {
     _workingFileDigest = null;
     _currentSample = null;
     _currentElement = null;
+    _elements = null;
     notifyListeners();
   }
 
@@ -118,10 +119,11 @@ class Model extends ChangeNotifier {
       _currentSample = null;
     }
     if (_currentElement != null && _currentSample != null) {
-      final Iterable<CodeSample> samples =
-          _currentElement!.samples.where((CodeSample sample) => sample.index == _currentSample!.index);
+      final Iterable<CodeSample> samples = _currentElement!.samples
+          .where((CodeSample sample) => sample.index == _currentSample!.index);
       if (samples.length != 1) {
-        throw SnippetException('Unable to find sample ${_currentSample!.index} on ${_currentElement!.elementName} during reload.');
+        throw SnippetException(
+            'Unable to find sample ${_currentSample!.index} on ${_currentElement!.elementName} during reload.');
       }
       _currentSample = samples.single;
     } else {
@@ -194,8 +196,7 @@ class Model extends ChangeNotifier {
     late List<String> insertedTags;
     final List<String> body = <String>[
       '///',
-      '/// Replace this text with the description for the sample',
-      '/// on "${_currentElement!.elementName}" goes here.',
+      '/// Replace this text with the description of this sample.',
       '///',
       '/// ```dart',
       '/// Widget build(BuildContext context) {',
@@ -209,7 +210,11 @@ class Model extends ChangeNotifier {
 
     switch (sampleType) {
       case SnippetSample:
-        insertedTags = <String>[if (!foundSeeAlso) '///', '/// {@tool snippet}', ...body];
+        insertedTags = <String>[
+          if (!foundSeeAlso) '///',
+          '/// {@tool snippet}',
+          ...body,
+        ];
         break;
       case ApplicationSample:
         insertedTags = <String>[
@@ -284,6 +289,13 @@ class Model extends ChangeNotifier {
       _currentElement = value;
       notifyListeners();
     }
+  }
+
+  SourceElement? getElementForSample(CodeSample sample) {
+    if (elements == null) {
+      return null;
+    }
+    return elements!.where((SourceElement element) => element.samples.contains(sample)).single;
   }
 
   Iterable<CodeSample> get samples {
