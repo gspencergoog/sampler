@@ -197,8 +197,7 @@ class FlutterSampleEditor {
           'Project output location ${location.absolute.path} exists, refusing to overwrite.');
     }
 
-    final Directory flutterRoot =
-        this.flutterRoot ?? getFlutterRoot(processManager: processManager, filesystem: filesystem);
+    final Directory flutterRoot = this.flutterRoot ?? FlutterInformation.instance.getFlutterRoot();
     final File flutter = flutterRoot.childDirectory('bin').childFile('flutter');
     if (!processManager.canRun(flutter.absolute.path)) {
       throw SnippetException('Unable to run flutter command');
@@ -235,8 +234,8 @@ class FlutterSampleEditor {
     // Rewrite the pubspec to include the right constraints and point to the flutter root.
 
     final File pubspec = location.childFile('pubspec.yaml');
-    final Version flutterVersion = getFlutterVersion();
-    final Version dartVersion = getDartSdkVersion();
+    final Version flutterVersion = FlutterInformation.instance.getFlutterVersion();
+    final Version dartVersion = FlutterInformation.instance.getDartSdkVersion();
     await pubspec.writeAsString('''
 name: $name
 description: $description

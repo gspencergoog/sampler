@@ -182,15 +182,12 @@ class _SamplerState extends State<Sampler> {
     if (value.text.isEmpty || Model.instance.files == null) {
       return const Iterable<File>.empty();
     }
-    Iterable<File> candidates;
     if (value.text.contains(path.separator)) {
-      candidates = Model.instance.files!
+      return Model.instance.files!
           .where((File file) => file.path.toLowerCase().contains(value.text.toLowerCase()));
-    } else {
-      candidates = Model.instance.files!
-          .where((File file) => file.basename.toLowerCase().contains(value.text.toLowerCase()));
     }
-    return candidates;
+    return Model.instance.files!
+        .where((File file) => file.basename.toLowerCase().contains(value.text.toLowerCase()));
   }
 
   Widget _buildFileField(BuildContext context, TextEditingController textEditingController,
@@ -200,16 +197,19 @@ class _SamplerState extends State<Sampler> {
       textEditingController: textEditingController,
       onFieldSubmitted: onFieldSubmitted,
       hintText: 'Enter the name of a framework source file',
-      trailing: Model.instance.workingFile != null
+      trailing: textEditingController.text.isNotEmpty
           ? IconButton(
               icon: const Icon(Icons.highlight_remove),
               onPressed: () {
-                setState(() {
-                  Model.instance.clearWorkingFile();
-                  textEditingController.clear();
-                  expandedIndex = -1;
-                });
-              })
+                setState(
+                  () {
+                    Model.instance.clearWorkingFile();
+                    textEditingController.clear();
+                    expandedIndex = -1;
+                  },
+                );
+              },
+            )
           : null,
     );
   }
@@ -238,22 +238,20 @@ class _SamplerState extends State<Sampler> {
   Widget build(BuildContext context) {
     List<ExpansionPanel> panels = const <ExpansionPanel>[];
     Iterable<CodeSample> samples = const <CodeSample>[];
-    if (Model.instance.samples != null) {
-      if (Model.instance.currentSample == null) {
-        samples = Model.instance.samples;
-      } else {
-        samples = <CodeSample>[Model.instance.currentSample!];
-      }
-      int index = 0;
-      panels = samples.map<ExpansionPanel>(
-        (CodeSample sample) {
-          final ExpansionPanel result =
-              _createExpansionPanel(sample, isExpanded: index == expandedIndex);
-          index++;
-          return result;
-        },
-      ).toList();
+    if (Model.instance.currentSample == null) {
+      samples = Model.instance.samples;
+    } else {
+      samples = <CodeSample>[Model.instance.currentSample!];
     }
+    int index = 0;
+    panels = samples.map<ExpansionPanel>(
+      (CodeSample sample) {
+        final ExpansionPanel result =
+            _createExpansionPanel(sample, isExpanded: index == expandedIndex);
+        index++;
+        return result;
+      },
+    ).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -299,38 +297,42 @@ class _SamplerState extends State<Sampler> {
                           fieldViewBuilder: _buildFileField,
                           optionsBuilder: _fileOptions,
                           displayStringForOption: (File file) {
-                            if (path.isWithin(Model.instance.flutterRoot.path, file.absolute.path)) {
-                              return path.relative(file.absolute.path, from: Model.instance.flutterRoot.absolute.path);
+                            if (path.isWithin(
+                                Model.instance.flutterRoot.path, file.absolute.path)) {
+                              return path.relative(file.absolute.path,
+                                  from: Model.instance.flutterRoot.absolute.path);
                             } else {
                               return file.absolute.path;
                             }
                           },
                           onSelected: (File file) {
                             expandedIndex = -1;
-                              Model.instance.setWorkingFile(file).onError((Exception e, StackTrace trace) {
-                                if (e is! SnippetException) {
-                                  throw e;
-                                }
-                                final ScaffoldMessengerState? scaffold = ScaffoldMessenger.maybeOf(context);
-                                scaffold?.showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.red,
-                                    duration: const Duration(seconds: 10),
-                                    content: Text(e.toString()),
-                                  ),
-                                );
+                            Model.instance
+                                .setWorkingFile(file)
+                                .onError((Exception e, StackTrace trace) {
+                              if (e is! SnippetException) {
+                                throw e;
+                              }
+                              final ScaffoldMessengerState? scaffold =
+                                  ScaffoldMessenger.maybeOf(context);
+                              scaffold?.showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 10),
+                                  content: Text(e.toString()),
+                                ),
+                              );
                             });
                           },
                         )),
                       ],
                     ),
                   ),
-                  if (Model.instance.samples != null)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.all(8.0),
-                      child: Text(_getSampleStats(),
-                          textAlign: TextAlign.center, style: Theme.of(context).textTheme.caption),
-                    ),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.all(8.0),
+                    child: Text(_getSampleStats(),
+                        textAlign: TextAlign.center, style: Theme.of(context).textTheme.caption),
+                  ),
                   ExpansionPanelList(
                     children: panels,
                     expansionCallback: (int index, bool expanded) {

@@ -80,7 +80,7 @@ void openInIde(IdeType type, FileSystemEntity location,
           ], runInShell: true);
           break;
         case IdeType.vscode:
-          final Directory flutterRoot = getFlutterRoot(processManager: processManager, platform: platform, filesystem: filesystem);
+          final Directory flutterRoot = FlutterInformation.instance.getFlutterRoot();
           processManager.run(<String>[
             'code',
             '-n',
@@ -98,7 +98,8 @@ void openInIde(IdeType type, FileSystemEntity location,
             'mdfind',
             'kMDItemCFBundleIdentifier=com.jetbrains.intellij* kind:application',
           ], stdoutEncoding: utf8);
-          final Iterable<String> candidates = (result.stdout as String).split('\n').where((String candidate) {
+          final Iterable<String> candidates =
+              (result.stdout as String).split('\n').where((String candidate) {
             return !candidate.contains('/Application Support/');
           });
           final String appName = candidates.isNotEmpty ? candidates.first : 'IntelliJ IDEA CE';
@@ -112,9 +113,12 @@ void openInIde(IdeType type, FileSystemEntity location,
             if (startLine != 0) '--line',
             if (startLine != 0) '$startLine',
           ];
-          processManager.run(command, stdoutEncoding: utf8, stderrEncoding: utf8).then((ProcessResult result) {
+          processManager
+              .run(command, stdoutEncoding: utf8, stderrEncoding: utf8)
+              .then((ProcessResult result) {
             if (result.exitCode != 0) {
-              throw SnippetException('Unable to launch app $appName (${result.exitCode}): ${result.stderr}');
+              throw SnippetException(
+                  'Unable to launch app $appName (${result.exitCode}): ${result.stderr}');
             }
           }).onError((Exception exception, StackTrace stackTrace) {
             throw SnippetException('Unable to launch app $appName: $exception');
@@ -127,7 +131,7 @@ void openInIde(IdeType type, FileSystemEntity location,
           ], stdoutEncoding: utf8);
           final Iterable<String> candidates = (result.stdout as String).split('\n');
           final String appName = candidates.isNotEmpty ? candidates.first : 'Visual Studio Code';
-          final Directory flutterRoot = getFlutterRoot(processManager: processManager, platform: platform, filesystem: filesystem);
+          final Directory flutterRoot = FlutterInformation.instance.getFlutterRoot();
           processManager.run(<String>[
             'open',
             '-na',
@@ -139,7 +143,8 @@ void openInIde(IdeType type, FileSystemEntity location,
             '${location.absolute.path}:$startLine',
           ], stdoutEncoding: utf8, stderrEncoding: utf8).then((ProcessResult result) {
             if (result.exitCode != 0) {
-              throw SnippetException('Unable to launch app $appName (${result.exitCode}): ${result.stderr}');
+              throw SnippetException(
+                  'Unable to launch app $appName (${result.exitCode}): ${result.stderr}');
             }
           }).onError((Exception exception, StackTrace stackTrace) {
             throw SnippetException('Unable to launch app $appName: $exception');

@@ -19,8 +19,8 @@ class Model extends ChangeNotifier {
     Directory? dartUiRoot,
     this.filesystem = const LocalFileSystem(),
   })  : _workingFile = workingFile,
-        flutterRoot = flutterRoot ?? _findFlutterRoot(filesystem),
-        dartUiRoot = dartUiRoot ?? _findDartUiRoot(filesystem),
+        flutterRoot = flutterRoot ?? _findFlutterRoot(),
+        dartUiRoot = dartUiRoot ?? _findDartUiRoot(),
         _dartdocParser = SnippetDartdocParser(),
         _snippetGenerator = SnippetGenerator();
 
@@ -38,12 +38,14 @@ class Model extends ChangeNotifier {
 
   final FileSystem filesystem;
 
-  static Directory _findFlutterRoot(FileSystem filesystem) {
-    return getFlutterRoot(filesystem: filesystem);
+  static Directory _findFlutterRoot() {
+    return FlutterInformation.instance.getFlutterRoot();
   }
 
-  static Directory _findDartUiRoot(FileSystem filesystem) {
-    return getFlutterRoot(filesystem: filesystem).absolute
+  static Directory _findDartUiRoot() {
+    return FlutterInformation.instance
+        .getFlutterRoot()
+        .absolute
         .childDirectory('bin')
         .childDirectory('cache')
         .childDirectory('pkg')
@@ -74,7 +76,7 @@ class Model extends ChangeNotifier {
         if (path.split(relativePath.path).contains('test')) {
           continue;
         }
-        print ('Adding $file');
+        print('Adding $file');
         foundDartFiles.add(file);
       }
       files!.addAll(foundDartFiles);

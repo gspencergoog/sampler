@@ -24,12 +24,7 @@ class SourceLine {
   final int indent;
   final String text;
 
-  String toStringWithColumn(int column) {
-    if (column != null && indent != null) {
-      return '$file:$line:${column + indent}: $text';
-    }
-    return toString();
-  }
+  String toStringWithColumn(int column) => '$file:$line:${column + indent}: $text';
 
   SourceLine copyWith({
     String? element,
